@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.*
+coverage
+*.log
+server/data/runtime.json
+server/uploads
+playwright-report
+test-results

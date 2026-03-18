@@ -1,0 +1,390 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", "Aptos", sans-serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(235, 176, 74, 0.16), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(50, 141, 190, 0.18), transparent 26%),
+    linear-gradient(160deg, #08101d 0%, #0d1628 48%, #111827 100%);
+  color: #f8fafc;
+}
+
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 26%),
+    linear-gradient(160deg, #dbe4f0 0%, #cbd5e1 48%, #e2e8f0 100%);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.hero-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(8, 16, 29, 0.86)),
+    radial-gradient(circle at top right, rgba(245, 197, 92, 0.16), transparent 28%);
+  box-shadow: 0 30px 80px rgba(2, 8, 23, 0.42);
+}
+
+:root[data-theme="light"] .hero-panel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(145deg, rgba(71, 85, 105, 0.92), rgba(51, 65, 85, 0.92)),
+    radial-gradient(circle at top right, rgba(245, 197, 92, 0.2), transparent 28%);
+}
+
+.hero-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent 90%);
+  pointer-events: none;
+}
+
+.workspace-root {
+  color: #f8fafc;
+}
+
+.dashboard-shell {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(9, 17, 31, 0.9)),
+    radial-gradient(circle at top right, rgba(234, 179, 8, 0.12), transparent 24%);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="light"] .dashboard-shell {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.96)),
+    radial-gradient(circle at top right, rgba(234, 179, 8, 0.08), transparent 24%);
+  box-shadow: 0 18px 70px rgba(148, 163, 184, 0.18);
+}
+
+.primary-btn,
+.ghost-btn {
+  border-radius: 999px;
+  padding: 0.9rem 1.2rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+:root[data-theme="light"] .ghost-btn {
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f172a;
+}
+
+.primary-btn {
+  border: 1px solid rgba(245, 197, 92, 0.55);
+  background: linear-gradient(135deg, #f5c55c 0%, #f59e0b 100%);
+  color: #111827;
+}
+
+.ghost-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+}
+
+.primary-btn:hover,
+.ghost-btn:hover {
+  transform: translateY(-1px);
+}
+
+.app-label {
+  color: #cbd5e1;
+}
+
+.app-input {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(2, 6, 23, 0.55);
+  color: #f8fafc;
+}
+
+.app-input::placeholder {
+  color: #94a3b8;
+}
+
+.app-input:focus {
+  border-color: rgba(252, 211, 77, 0.6);
+}
+
+.app-file-input {
+  color: #cbd5e1;
+}
+
+.section-eyebrow,
+.metric-label,
+.sidebar-eyebrow {
+  color: #94a3b8;
+}
+
+.section-title,
+.sidebar-title {
+  color: #ffffff;
+}
+
+.hero-title {
+  color: #ffffff;
+}
+
+.section-copy,
+.metric-note,
+.sidebar-copy {
+  color: #94a3b8;
+}
+
+.surface-title {
+  color: #ffffff;
+}
+
+.surface-copy {
+  color: #cbd5e1;
+}
+
+.surface-meta {
+  color: #94a3b8;
+}
+
+.sidebar-status {
+  color: #64748b;
+}
+
+.sidebar-panel,
+.metric-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.surface-card,
+.table-shell,
+.empty-state {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.surface-pill {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.accent-card {
+  border: 1px solid rgba(252, 211, 77, 0.24);
+  background: rgba(252, 211, 77, 0.1);
+}
+
+.accent-eyebrow {
+  color: rgba(254, 243, 199, 0.9);
+}
+
+.accent-value {
+  color: #ffffff;
+}
+
+.accent-copy {
+  color: #e2e8f0;
+}
+
+.table-head {
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+}
+
+.table-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-row:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.hero-copy {
+  color: #cbd5e1;
+}
+
+.metric-value {
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-link-idle {
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+}
+
+.sidebar-link-hover:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workspace-divider {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-overlay {
+  background: rgba(2, 6, 23, 0.8);
+}
+
+.sidebar-link-active {
+  border-color: rgba(252, 211, 77, 0.45);
+  background: rgba(252, 211, 77, 0.12);
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .app-label {
+  color: #334155;
+}
+
+:root[data-theme="light"] .app-file-input {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .app-input {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .app-input::placeholder {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .section-eyebrow,
+:root[data-theme="light"] .metric-label,
+:root[data-theme="light"] .sidebar-eyebrow {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .section-title,
+:root[data-theme="light"] .sidebar-title,
+:root[data-theme="light"] .metric-value {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .hero-title {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .section-copy,
+:root[data-theme="light"] .metric-note,
+:root[data-theme="light"] .sidebar-copy {
+  color: #475569;
+}
+
+:root[data-theme="light"] .surface-title {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .surface-copy {
+  color: #475569;
+}
+
+:root[data-theme="light"] .surface-meta {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .sidebar-status {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .sidebar-panel,
+:root[data-theme="light"] .metric-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme="light"] .surface-card,
+:root[data-theme="light"] .table-shell,
+:root[data-theme="light"] .empty-state {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme="light"] .surface-pill {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #475569;
+}
+
+:root[data-theme="light"] .accent-card {
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(251, 191, 36, 0.14);
+}
+
+:root[data-theme="light"] .accent-eyebrow {
+  color: #92400e;
+}
+
+:root[data-theme="light"] .accent-value {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .accent-copy {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .table-head {
+  background: rgba(241, 245, 249, 0.9);
+  color: #64748b;
+}
+
+:root[data-theme="light"] .table-row {
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+:root[data-theme="light"] .table-row:hover {
+  background: rgba(241, 245, 249, 0.72);
+}
+
+:root[data-theme="light"] .hero-copy {
+  color: #e2e8f0;
+}
+
+:root[data-theme="light"] .sidebar-link-idle {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.48);
+  color: #1e293b;
+}
+
+:root[data-theme="light"] .sidebar-link-hover:hover {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="light"] .sidebar-link-active {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .workspace-root {
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .workspace-divider {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+:root[data-theme="light"] .mobile-overlay {
+  background: rgba(226, 232, 240, 0.88);
+}
