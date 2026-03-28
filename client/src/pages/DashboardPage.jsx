@@ -204,20 +204,23 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
             <form className="grid gap-4 md:grid-cols-2" onSubmit={onCreateProject}>
               <Field
                 label="Project Name"
+                autoComplete="off"
                 value={projectForm.name}
                 onChange={(e) => setProjectForm((c) => ({ ...c, name: e.target.value }))}
-                placeholder="Two-storey residence, fit-out, warehouse shell"
+                placeholder="Two-storey residence, fit-out, warehouse shell…"
               />
               <Field
                 label="Location"
+                autoComplete="off"
                 value={projectForm.location}
                 onChange={(e) => setProjectForm((c) => ({ ...c, location: e.target.value }))}
-                placeholder="Quezon City, Pasig, Makati"
+                placeholder="Quezon City, Pasig, Makati…"
               />
               <Field
                 label="Area (sqm)"
                 type="number"
                 min="1"
+                autoComplete="off"
                 value={projectForm.areaSqm}
                 onChange={(e) => setProjectForm((c) => ({ ...c, areaSqm: e.target.value }))}
               />
@@ -226,14 +229,15 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
                   label="Description"
                   type="textarea"
                   rows={4}
+                  autoComplete="off"
                   value={projectForm.description}
-                  placeholder="Describe the scope, building type, and anything that will matter for estimating."
+                  placeholder="Describe the scope, building type, and anything that will matter for estimating…"
                   onChange={(e) => setProjectForm((c) => ({ ...c, description: e.target.value }))}
                 />
               </div>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                 <button className="primary-btn" type="submit" disabled={createBusy}>
-                  {createBusy ? "Adding..." : "Add Project"}
+                  {createBusy ? "Adding…" : "Add Project"}
                 </button>
                 <p className="surface-copy text-sm">New projects become the current workspace context automatically.</p>
               </div>

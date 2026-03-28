@@ -16,7 +16,7 @@ test("core estimating flow works through the UI", async ({ page }) => {
 
   await page.getByRole("navigation").getByRole("link", { name: /Documents/i }).click();
   const documentSection = page.locator("section").filter({ hasText: "Upload and Analyze" });
-  await documentSection.getByLabel("Upload File").setInputFiles({
+  await documentSection.locator('input[type="file"]').setInputFiles({
     name: "scope-sheet.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("living room, slab, roof framing")
@@ -37,13 +37,19 @@ test("core estimating flow works through the UI", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Account and Identity" })).toBeVisible();
 
   await page.getByRole("navigation").getByRole("link", { name: /Estimates/i }).click();
-  const estimateSection = page.locator("section").filter({ hasText: "AI Draft" });
-  await estimateSection.getByRole("button", { name: "Generate Draft" }).click();
-  await expect(page.getByText("Finalize")).toBeVisible();
-  await expect(page.locator("section").filter({ hasText: "Estimator" }).getByText("Final Price").first()).toBeVisible();
+  const generateSection = page.locator("section").filter({ hasText: "Generate Draft" }).first();
+  await generateSection.getByPlaceholder("60 sqm bungalow, Quezon City, standard finish, 2BR, 1 bath, complete fit-out...").fill(
+    "Generate a standard 84 sqm bungalow house estimate in Pasig City with 2 bedrooms, 1 bathroom, and complete residential finishes."
+  );
+  await generateSection.getByRole("button", { name: "Generate Draft" }).click();
+
+  const workspaceSection = page.locator("section").filter({ hasText: "Estimate Workspace" }).first();
+  await expect(workspaceSection).toBeVisible();
+  await expect(page.getByText("Final Price").first()).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export PDF Proposal" }).click();
+  await page.getByRole("button", { name: /Export/i }).click();
+  await page.getByRole("button", { name: "Export PDF" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toContain("estimate.pdf");
 });

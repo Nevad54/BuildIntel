@@ -120,13 +120,14 @@ export function SettingsPage({
                 <Field
                   label="Email"
                   type="email"
+                  spellCheck={false}
                   value={accountForm.email}
                   onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
                 />
-                <div className="app-label block text-sm">
+                <label className="app-label block text-sm">
                   <span>Role</span>
-                  <div className="app-input mt-2 rounded-2xl px-4 py-3 text-sm">{data.user?.role || "-"}</div>
-                </div>
+                  <input className="app-input mt-1.5 w-full px-3 py-2 text-sm" readOnly value={data.user?.role || "-"} />
+                </label>
                 <Field
                   label="Company"
                   value={accountForm.companyName}
@@ -143,7 +144,7 @@ export function SettingsPage({
                 </div>
                 <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                   <button className="primary-btn" type="submit" disabled={accountBusy}>
-                    {accountBusy ? "Saving..." : "Save Account Settings"}
+                    {accountBusy ? "Saving…" : "Save Account Settings"}
                   </button>
                   <p className="surface-copy text-sm">Password changes are only applied when a new password is entered.</p>
                 </div>

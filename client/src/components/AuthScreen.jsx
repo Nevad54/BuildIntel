@@ -59,17 +59,22 @@ export function AuthScreen({
               <Field
                 label="Email"
                 type="email"
+                name="email"
+                autoComplete="email"
+                spellCheck={false}
                 value={loginForm.email}
                 onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
               />
               <Field
                 label="Password"
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 value={loginForm.password}
                 onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
               />
               <button className="primary-btn w-full" type="submit" disabled={busy}>
-                {busy ? "Signing in..." : "Sign in"}
+                {busy ? "Signing in…" : "Sign in"}
               </button>
               <button className="ghost-btn w-full" type="button" onClick={() => onLogin(null, true)} disabled={busy}>
                 Sign in to demo workspace
@@ -80,28 +85,37 @@ export function AuthScreen({
             <form className="mt-6 space-y-4" onSubmit={onRegister}>
               <Field
                 label="Company Name"
+                name="company"
+                autoComplete="organization"
                 value={registerForm.companyName}
                 onChange={(event) => setRegisterForm((current) => ({ ...current, companyName: event.target.value }))}
               />
               <Field
                 label="Your Name"
+                name="name"
+                autoComplete="name"
                 value={registerForm.name}
                 onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
               />
               <Field
                 label="Email"
                 type="email"
+                name="email"
+                autoComplete="email"
+                spellCheck={false}
                 value={registerForm.email}
                 onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
               />
               <Field
                 label="Password"
                 type="password"
+                name="password"
+                autoComplete="new-password"
                 value={registerForm.password}
                 onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
               />
               <button className="primary-btn w-full" type="submit" disabled={busy}>
-                {busy ? "Creating account..." : "Create workspace"}
+                {busy ? "Creating account…" : "Create workspace"}
               </button>
             </form>
           ) : null}
@@ -110,11 +124,14 @@ export function AuthScreen({
               <Field
                 label="Email"
                 type="email"
+                name="email"
+                autoComplete="email"
+                spellCheck={false}
                 value={resetEmail}
                 onChange={(event) => setResetEmail(event.target.value)}
               />
               <button className="primary-btn w-full" type="submit" disabled={busy}>
-                {busy ? "Preparing reset..." : "Prepare reset token"}
+                {busy ? "Preparing reset…" : "Prepare reset token"}
               </button>
             </form>
           ) : null}

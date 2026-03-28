@@ -267,7 +267,7 @@ function MaterialRow({ m, currencyCode, baseLocation, onUpdateMaterial, canEdit,
             <div className="flex gap-2">
               <button type="button" className="ghost-btn px-3 py-1.5 text-xs" onClick={cancelEdit}>Cancel</button>
               <button type="button" className="primary-btn px-3 py-1.5 text-xs" onClick={saveEdit} disabled={busy}>
-                {busy ? "Saving..." : "Save"}
+                {busy ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
@@ -335,6 +335,7 @@ function MaterialRow({ m, currencyCode, baseLocation, onUpdateMaterial, canEdit,
                 className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-400 transition hover:border-sky-400/40 hover:bg-sky-400/10 hover:text-sky-300"
                 onClick={openEdit}
                 title="Edit price"
+                aria-label="Edit price"
               >
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
                   <path d="M11 2.5a1.5 1.5 0 0 1 2.12 2.12L5 13H3v-2L11 2.5Z" />
@@ -601,7 +602,7 @@ export function PricingPage({
                   </div>
                   <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                     <button className="primary-btn" type="submit" disabled={materialBusy}>
-                      {materialBusy ? "Saving..." : "Add Material"}
+                      {materialBusy ? "Saving…" : "Add Material"}
                     </button>
                     <p className="surface-copy text-sm">New materials start contributing to pricing alerts and future estimate context.</p>
                   </div>
@@ -627,7 +628,7 @@ export function PricingPage({
                 <form className="mt-4 space-y-4" onSubmit={onImportPricing}>
                   <Field label="Source" value={pricingImportForm.source} onChange={(e) => setPricingImportForm((c) => ({ ...c, source: e.target.value }))} />
                   <Field label="CSV Feed" type="textarea" rows={9} value={pricingImportForm.csvText} onChange={(e) => setPricingImportForm((c) => ({ ...c, csvText: e.target.value }))} />
-                  <button className="ghost-btn" type="submit" disabled={importBusy}>{importBusy ? "Importing..." : "Import CSV Feed"}</button>
+                  <button className="ghost-btn" type="submit" disabled={importBusy}>{importBusy ? "Importing…" : "Import CSV Feed"}</button>
                 </form>
               </div>
 
@@ -639,7 +640,7 @@ export function PricingPage({
                 <form className="mt-4 space-y-4" onSubmit={onImportRemotePricing}>
                   <Field label="Source" value={remoteImportForm.source} onChange={(e) => setRemoteImportForm((c) => ({ ...c, source: e.target.value }))} />
                   <Field label="Remote Feed URL" type="url" value={remoteImportForm.url} onChange={(e) => setRemoteImportForm((c) => ({ ...c, url: e.target.value }))} />
-                  <button className="ghost-btn" type="submit" disabled={importBusy}>{importBusy ? "Importing..." : "Import Remote Feed"}</button>
+                  <button className="ghost-btn" type="submit" disabled={importBusy}>{importBusy ? "Importing…" : "Import Remote Feed"}</button>
                 </form>
               </div>
             </div>

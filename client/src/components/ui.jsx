@@ -12,7 +12,7 @@ export function QuickLink({ to, label, tone = "ghost", note }) {
   );
 }
 
-export function Field({ label, type = "text", value, onChange, placeholder, step, min, rows, inputRef, accept, multiple, disabled, readOnly, fileName }) {
+export function Field({ label, type = "text", value, onChange, placeholder, step, min, rows, inputRef, accept, multiple, disabled, readOnly, fileName, name, autoComplete, spellCheck }) {
   const fileRef = useRef(null);
   const fileId = useId();
   const shared = {
@@ -21,7 +21,10 @@ export function Field({ label, type = "text", value, onChange, placeholder, step
     onChange,
     placeholder,
     disabled,
-    readOnly
+    readOnly,
+    ...(name !== undefined && { name }),
+    ...(autoComplete !== undefined && { autoComplete }),
+    ...(spellCheck !== undefined && { spellCheck })
   };
 
   if (type === "file") {

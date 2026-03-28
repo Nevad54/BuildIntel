@@ -2,6 +2,8 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { getNavItemsForRole, number } from "../lib/app.js";
 import { cls } from "./ui.jsx";
+import logoIcon from "../assets/logo-icon.svg";
+import logoFull from "../assets/logo-full.svg";
 
 function SidebarLink({ to, label, description, onClick }) {
   return (
@@ -97,11 +99,24 @@ export function WorkspaceShell({
 
   return (
     <div className="workspace-root min-h-screen overflow-x-hidden">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:px-4 focus:py-2 primary-btn"
+      >
+        Skip to main content
+      </a>
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         <aside className="workspace-divider hidden w-[280px] shrink-0 border-r px-4 py-5 lg:block">
           <div className="sticky top-0 space-y-4">
             <div className="sidebar-panel rounded-lg border p-4">
-              <p className="sidebar-eyebrow">BuildIntel</p>
+              <img
+                src={logoFull}
+                alt="BuildIntel"
+                width="156"
+                height="36"
+                className="block"
+                draggable="false"
+              />
               <h1 className="sidebar-title mt-2 text-lg font-semibold">{company?.name || "Workspace"}</h1>
               <p className="sidebar-copy mt-1 text-xs">
                 {user?.name} &middot; {user?.role}
@@ -128,6 +143,7 @@ export function WorkspaceShell({
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <header className="workspace-divider flex items-center justify-between border-b px-4 py-3 lg:px-8">
             <div className="flex items-center gap-3">
+              <img src={logoIcon} alt="BuildIntel" width="24" height="24" className="hidden shrink-0 lg:block" draggable="false" aria-hidden="true" />
               <p className="section-title text-sm font-semibold">{company?.name || "BuildIntel"}</p>
               {currentProject ? (
                 <div className="hidden items-center gap-2 md:flex">
@@ -168,7 +184,7 @@ export function WorkspaceShell({
             </div>
           ) : null}
 
-          <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">{children}</main>
+          <main id="main-content" className="min-w-0 flex-1 px-4 py-6 lg:px-8">{children}</main>
         </div>
       </div>
     </div>

@@ -36,14 +36,14 @@ function ProjectCard({ project, onUpdateProject, onDeleteProject, updateBusy, ca
     <div className="surface-card rounded-2xl p-4">
       {editing ? (
         <form className="space-y-3" onSubmit={saveEdit}>
-          <Field label="Name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <Field label="Name" autoComplete="off" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Location" value={draft.location} onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))} />
-            <Field label="Area (sqm)" type="number" min="1" value={draft.areaSqm} onChange={(e) => setDraft((d) => ({ ...d, areaSqm: e.target.value }))} />
+            <Field label="Location" autoComplete="off" value={draft.location} onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))} />
+            <Field label="Area (sqm)" type="number" min="1" autoComplete="off" value={draft.areaSqm} onChange={(e) => setDraft((d) => ({ ...d, areaSqm: e.target.value }))} />
           </div>
-          <Field label="Description" type="textarea" rows={3} value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
+          <Field label="Description" type="textarea" rows={3} autoComplete="off" value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
           <div className="flex gap-2 pt-1">
-            <button className="primary-btn" type="submit" disabled={updateBusy}>{updateBusy ? "Saving..." : "Save"}</button>
+            <button className="primary-btn" type="submit" disabled={updateBusy}>{updateBusy ? "Saving…" : "Save"}</button>
             <button className="ghost-btn" type="button" onClick={() => setEditing(false)}>Cancel</button>
           </div>
         </form>
@@ -75,7 +75,7 @@ function ProjectCard({ project, onUpdateProject, onDeleteProject, updateBusy, ca
                 {confirmDelete ? (
                   <>
                     <button className="ghost-btn text-xs text-rose-400" type="button" onClick={() => onDeleteProject(project.id)} disabled={updateBusy}>
-                      {updateBusy ? "Deleting..." : "Confirm Delete"}
+                      {updateBusy ? "Deleting…" : "Confirm Delete"}
                     </button>
                     <button className="ghost-btn text-xs" type="button" onClick={() => setConfirmDelete(false)}>Cancel</button>
                   </>
@@ -391,20 +391,23 @@ export function ProjectsPage({
             <form className="space-y-4" onSubmit={onCreateProject}>
               <Field
                 label="Project Name"
+                autoComplete="off"
                 value={projectForm.name}
-                placeholder="Retail fit-out, house shell, office renovation"
+                placeholder="Retail fit-out, house shell, office renovation…"
                 onChange={(e) => setProjectForm((c) => ({ ...c, name: e.target.value }))}
               />
               <Field
                 label="Location"
+                autoComplete="off"
                 value={projectForm.location}
-                placeholder="Makati, Taguig, Quezon City"
+                placeholder="Makati, Taguig, Quezon City…"
                 onChange={(e) => setProjectForm((c) => ({ ...c, location: e.target.value }))}
               />
               <Field
                 label="Area (sqm)"
                 type="number"
                 min="1"
+                autoComplete="off"
                 value={projectForm.areaSqm}
                 onChange={(e) => setProjectForm((c) => ({ ...c, areaSqm: e.target.value }))}
               />
@@ -412,13 +415,14 @@ export function ProjectsPage({
                 label="Description"
                 type="textarea"
                 rows={5}
-                placeholder="Describe the build type, scope, and pricing context."
+                autoComplete="off"
+                placeholder="Describe the build type, scope, and pricing context…"
                 value={projectForm.description}
                 onChange={(e) => setProjectForm((c) => ({ ...c, description: e.target.value }))}
               />
               <div className="flex flex-wrap items-center gap-3">
                 <button className="primary-btn" type="submit" disabled={createBusy}>
-                  {createBusy ? "Adding..." : "Add Project"}
+                  {createBusy ? "Adding…" : "Add Project"}
                 </button>
                 <p className="surface-copy text-sm">New projects are added to the pipeline and become the active workspace context.</p>
               </div>

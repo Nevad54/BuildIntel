@@ -141,7 +141,7 @@ function CivilFields({ draft, setDraft, canManageDocuments, lowConfidence }) {
         label="Road Details (one per line)"
         type="textarea"
         rows={3}
-        placeholder={"Road Lot 1: 8.0m wide, ~200m long\nRoad Lot 2: 6.5m wide, ~150m long"}
+        placeholder={"Road Lot 1: 8.0m wide, ~200m long\nRoad Lot 2: 6.5m wide, ~150m long…"}
         value={draft.extracted.roadDetails ?? ""}
         disabled={!canManageDocuments}
         onChange={(e) => setDraft((d) => ({ ...d, extracted: { ...d.extracted, roadDetails: e.target.value } }))}
@@ -150,7 +150,7 @@ function CivilFields({ draft, setDraft, canManageDocuments, lowConfidence }) {
         label="Drainage Pipes (one per line)"
         type="textarea"
         rows={3}
-        placeholder={"24\" RCP: est. 620m\n15\" RCP: est. 320m"}
+        placeholder={"24\" RCP: est. 620m\n15\" RCP: est. 320m…"}
         value={draft.extracted.drainagePipes ?? ""}
         disabled={!canManageDocuments}
         onChange={(e) => setDraft((d) => ({ ...d, extracted: { ...d.extracted, drainagePipes: e.target.value } }))}
@@ -159,7 +159,7 @@ function CivilFields({ draft, setDraft, canManageDocuments, lowConfidence }) {
         label="Waterline Pipes (one per line)"
         type="textarea"
         rows={3}
-        placeholder={"100mm PVC: est. 180m\n75mm PVC: est. 400m\n50mm PVC: est. 850m"}
+        placeholder={"100mm PVC: est. 180m\n75mm PVC: est. 400m\n50mm PVC: est. 850m…"}
         value={draft.extracted.waterlinePipes ?? ""}
         disabled={!canManageDocuments}
         onChange={(e) => setDraft((d) => ({ ...d, extracted: { ...d.extracted, waterlinePipes: e.target.value } }))}
@@ -308,7 +308,7 @@ function ReviewCard({ document, projects, onSaveReview, onDeleteDocument, review
                   onClick={() => onDeleteDocument(document.id)}
                   disabled={reviewBusy}
                 >
-                  {reviewBusy ? "Deleting..." : "Confirm Delete"}
+                  {reviewBusy ? "Deleting…" : "Confirm Delete"}
                 </button>
                 <button className="ghost-btn text-xs" type="button" onClick={() => setConfirmDelete(false)}>Cancel</button>
               </div>
@@ -354,7 +354,7 @@ function ReviewCard({ document, projects, onSaveReview, onDeleteDocument, review
           {canManageDocuments ? (
             <div className="flex flex-wrap items-center gap-3">
               <button className="ghost-btn" type="button" onClick={handleSave} disabled={reviewBusy}>
-                {reviewBusy ? "Saving..." : "Save Review"}
+                {reviewBusy ? "Saving…" : "Save Review"}
               </button>
               <p className="surface-copy text-sm">Saving keeps extracted signals aligned with downstream estimate assumptions.</p>
             </div>
@@ -493,6 +493,7 @@ export function DocumentsPage({
                     label="Notes"
                     type="textarea"
                     rows={4}
+                    autoComplete="off"
                     placeholder="Add any context that will help review the file after extraction."
                     value={documentForm.notes}
                     onChange={(e) => setDocumentForm((c) => ({ ...c, notes: e.target.value }))}
@@ -500,7 +501,7 @@ export function DocumentsPage({
                 </div>
                 <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                   <button className="primary-btn" type="submit" disabled={uploadBusy}>
-                    {uploadBusy ? "Uploading..." : "Upload and Analyze"}
+                    {uploadBusy ? "Uploading…" : "Upload and Analyze"}
                   </button>
                   <p className="surface-copy text-sm">Uploaded files appear immediately in the review queue.</p>
                 </div>

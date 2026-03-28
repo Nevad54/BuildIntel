@@ -13,7 +13,7 @@ function QuickLink({ to, label, tone = "ghost" }) {
 
 function MiniStat({ label, value, note }) {
   return (
-    <div className="rounded-2xl border border-black/5 bg-white/20 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+    <div className="surface-card rounded-2xl px-4 py-3">
       <p className="surface-meta text-[11px] uppercase tracking-[0.18em]">{label}</p>
       <p className="surface-title mt-2 text-base font-semibold">{value}</p>
       {note ? <p className="surface-copy mt-1 text-xs">{note}</p> : null}
@@ -26,8 +26,8 @@ function CommandChip({ active = false, children, ...props }) {
     <button
       className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
         active
-          ? "border-sky-400/30 bg-sky-400/12 text-sky-200"
-          : "border-white/10 bg-white/[0.03] text-slate-200 hover:border-white/20 hover:bg-white/[0.06]"
+          ? "surface-pill--accent"
+          : "surface-pill hover:opacity-80"
       }`}
       type="button"
       {...props}
@@ -129,10 +129,10 @@ function ExportMenu({ exportBusy, disabled, onExportCsv, onExportPdf, onExportSu
         disabled={disabled || exportBusy}
         onClick={() => setOpen((v) => !v)}
       >
-        {exportBusy ? "Exporting..." : "Export ▾"}
+        {exportBusy ? "Exporting…" : "Export ▾"}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-white/10 bg-[#1a1f2e] py-1 shadow-xl">
+        <div className="dashboard-shell absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border py-1 shadow-xl">
           {[
             { label: "Export CSV", fn: onExportCsv },
             { label: "Export PDF", fn: onExportPdf },
@@ -141,7 +141,7 @@ function ExportMenu({ exportBusy, disabled, onExportCsv, onExportPdf, onExportSu
           ].map(({ label, fn }) => (
             <button
               key={label}
-              className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-white/[0.06] transition"
+              className="surface-copy w-full px-4 py-2 text-left text-sm transition hover:opacity-80"
               type="button"
               onClick={handle(fn)}
             >
@@ -177,10 +177,10 @@ function EstimateWorkspaceHeader({
   const status = selectedEstimate?.status || "Draft";
   const statusClass =
     status === "Approved"
-      ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
       : status === "Reviewed"
-        ? "border border-sky-400/20 bg-sky-400/10 text-sky-200"
-        : "border border-sky-400/20 bg-sky-400/10 text-sky-200";
+        ? "border border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300"
+        : "border border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300";
 
   return (
     <div className="hero-panel rounded-[28px] p-6">
@@ -219,7 +219,7 @@ function EstimateWorkspaceHeader({
               onClick={onRefreshEstimateMarketPrices}
               disabled={marketRefreshBusy || !canRefreshMarketPrices || !selectedEstimate}
             >
-              {marketRefreshBusy ? "Refreshing..." : "Refresh Prices"}
+              {marketRefreshBusy ? "Refreshing…" : "Refresh Prices"}
             </button>
             <ExportMenu
               exportBusy={exportBusy}
@@ -235,7 +235,7 @@ function EstimateWorkspaceHeader({
               onClick={() => onPatchEstimate(false)}
               disabled={saveDisabled}
             >
-              {patchBusy ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
+              {patchBusy ? "Saving…" : hasUnsavedChanges ? "Save Changes" : "Saved"}
             </button>
           </div>
         </div>
@@ -257,7 +257,7 @@ function EstimateWorkspaceHeader({
 
 function InsightCard({ eyebrow, title, children, aside }) {
   return (
-    <div className="surface-card rounded-[22px] p-5">
+    <div className="surface-card rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {eyebrow ? <p className="section-eyebrow text-xs uppercase tracking-[0.24em]">{eyebrow}</p> : null}
@@ -290,7 +290,7 @@ function EstimateContextPanel({ selectedEstimate, data, currencyCode }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.92fr)]">
-      <div className="surface-card rounded-[24px] p-5">
+      <div className="surface-card rounded-2xl p-5">
         <p className="section-eyebrow text-xs uppercase tracking-[0.24em]">Estimate Basis</p>
         <h3 className="surface-title mt-2 text-xl font-semibold">{project?.name || "Current estimate"}</h3>
         <p className="surface-copy mt-2 text-sm leading-6">{selectedEstimate.prompt}</p>
@@ -335,7 +335,7 @@ function EstimateContextPanel({ selectedEstimate, data, currencyCode }) {
         </div>
       </div>
 
-      <div className="surface-card rounded-[24px] p-5">
+      <div className="surface-card rounded-2xl p-5">
         <p className="section-eyebrow text-xs uppercase tracking-[0.24em]">Cost Review</p>
         <h3 className="surface-title mt-2 text-xl font-semibold">Current draft mix</h3>
         <div className="mt-4 space-y-3">
@@ -343,7 +343,7 @@ function EstimateContextPanel({ selectedEstimate, data, currencyCode }) {
             const total = categoryTotals[category] || 0;
             const share = directCost > 0 ? Math.round((total / directCost) * 100) : 0;
             return (
-              <div key={category} className="rounded-[18px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
+              <div key={category} className="surface-card rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="surface-title text-sm font-semibold">{category}</p>
                   <p className="surface-title text-sm font-semibold">{formatCurrency(total, currencyCode, baseLocation)}</p>
@@ -448,10 +448,8 @@ function EstimateApprovalPanel({
       aside={
         <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
           status === "Approved"
-            ? "bg-emerald-400/10 text-emerald-200 border border-emerald-400/20"
-            : status === "Reviewed"
-              ? "bg-sky-400/10 text-sky-200 border border-sky-400/20"
-              : "bg-sky-400/10 text-sky-200 border border-sky-400/20"
+            ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 dark:text-emerald-300"
+            : "bg-sky-500/10 text-sky-600 border border-sky-500/30 dark:text-sky-300"
         }`}>
           {status}
         </span>
@@ -482,7 +480,7 @@ function EstimateApprovalPanel({
               onClick={() => onUpdateEstimateStatus(selectedEstimate.id, action.value)}
               disabled={statusBusy || !action.allowed}
             >
-              {statusBusy ? "Updating..." : action.allowed ? action.label : action.value === "Approved" ? "Admin Approval Only" : "Status Locked"}
+              {statusBusy ? "Updating…" : action.allowed ? action.label : action.value === "Approved" ? "Admin Approval Only" : "Status Locked"}
             </button>
           ))}
         </div>
@@ -519,7 +517,7 @@ function MarketRefreshReview({ result, currencyCode, location }) {
         <MetricCard label="Source Count" value={number.format(result.sources?.length || 0)} />
       </div>
       {result.updates?.length ? (
-        <div className="mt-4 rounded-[18px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
+        <div className="mt-4 surface-card rounded-2xl p-4">
           <p className="surface-meta text-[11px] uppercase tracking-[0.18em]">Sample updates</p>
           <div className="mt-3 grid gap-2">
             {result.updates.slice(0, 4).map((update) => (
@@ -541,7 +539,7 @@ function MarketRefreshReview({ result, currencyCode, location }) {
             {result.sources.slice(0, 6).map((source) => (
               <a
                 key={source.url}
-                className="rounded-[14px] border border-black/5 bg-white/20 px-4 py-3 text-sm transition hover:border-sky-400/30 hover:bg-white/30 dark:border-white/8 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+                className="surface-card rounded-2xl px-4 py-3 text-sm transition hover:border-sky-400/30"
                 href={source.url}
                 target="_blank"
                 rel="noreferrer"
@@ -588,15 +586,15 @@ function GeneratedDraftReview({ estimate, data, currencyCode }) {
         <MetricCard label="Location" value={estimate.location || "Metro Manila"} />
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-[16px] border border-black/5 bg-white/20 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+        <div className="surface-card rounded-2xl px-4 py-3">
           <p className="surface-meta text-[11px] uppercase tracking-[0.18em]">Materials</p>
           <p className="surface-title mt-2 text-sm font-semibold">{number.format(categoryCounts.Materials || 0)} line items</p>
         </div>
-        <div className="rounded-[16px] border border-black/5 bg-white/20 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+        <div className="surface-card rounded-2xl px-4 py-3">
           <p className="surface-meta text-[11px] uppercase tracking-[0.18em]">Labor</p>
           <p className="surface-title mt-2 text-sm font-semibold">{number.format(categoryCounts.Labor || 0)} line items</p>
         </div>
-        <div className="rounded-[16px] border border-black/5 bg-white/20 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+        <div className="surface-card rounded-2xl px-4 py-3">
           <p className="surface-meta text-[11px] uppercase tracking-[0.18em]">Equipment</p>
           <p className="surface-title mt-2 text-sm font-semibold">{number.format(categoryCounts.Equipment || 0)} line items</p>
         </div>
@@ -866,7 +864,7 @@ function EstimateRowFields({
           ))}
         </select>
       </div>
-      <div className="rounded-[18px] border border-black/5 bg-white/20 px-4 py-3 sm:col-span-2 dark:border-white/8 dark:bg-white/[0.03]">
+      <div className="surface-card rounded-2xl px-4 py-3 sm:col-span-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="surface-meta text-[11px] uppercase tracking-[0.2em]">Subtotal</p>
@@ -1656,7 +1654,7 @@ function EstimatorMaterialTools({
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="rounded-[20px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
+          <div className="surface-card rounded-2xl p-4">
           <div className="flex items-center justify-between gap-3">
             <p className="surface-title text-sm font-semibold">Catalog</p>
             <span className="surface-meta text-[11px] uppercase tracking-[0.18em]">Search to insert</span>
@@ -1720,7 +1718,7 @@ function EstimatorMaterialTools({
             </div>
           </div>
           {selectedMaterial ? (
-            <div className="mt-3 rounded-[18px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
+            <div className="mt-3 surface-card rounded-2xl p-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Material" value={selectedMaterial.name} note={`${selectedMaterial.unit} / ${selectedMaterial.trend}`} />
                 <MiniStat label="Unit Price" value={formatCurrency(selectedMaterial.averagePrice || 0, currencyCode, baseLocation)} note={`Qty ${insertQuantity || "1"}`} />
@@ -1733,7 +1731,7 @@ function EstimatorMaterialTools({
           ) : null}
         </div>
 
-          <div className="rounded-[20px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
+          <div className="surface-card rounded-2xl p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="surface-title text-sm font-semibold">Quick add</p>
@@ -1808,7 +1806,7 @@ function EstimatorMaterialTools({
             </div>
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
               <button className="primary-btn" type="submit" disabled={materialBusy}>
-                {materialBusy ? "Creating..." : "Create + Insert"}
+                {materialBusy ? "Creating…" : "Create + Insert"}
               </button>
               <p className="surface-copy text-sm">Adds to catalog and BOQ in one step.</p>
             </div>
@@ -2132,12 +2130,12 @@ function EstimateSwitcher({ estimates, selectedId, onSelect, onDelete }) {
         <span className="opacity-50">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-[16px] border border-white/10 bg-[#181c24] shadow-xl py-1">
+        <div className="dashboard-shell absolute right-0 top-full z-50 mt-1 w-80 rounded-2xl border py-1 shadow-xl">
           {estimates.map((estimate) => {
             const name = estimateLabel(estimate);
             const isActive = estimate.id === selectedId;
             return (
-              <div key={estimate.id} className={`flex items-center gap-2 px-3 py-2 hover:bg-white/[0.04] ${isActive ? "text-sky-400" : "text-slate-300"}`}>
+              <div key={estimate.id} className={`flex items-center gap-2 px-3 py-2 hover:opacity-80 transition ${isActive ? "text-sky-500" : "surface-copy"}`}>
                 <button
                   type="button"
                   className="flex-1 text-left text-sm truncate"
@@ -2632,7 +2630,7 @@ function TakeoffAssistForm({ onSubmit, busy, canEdit }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <button className="primary-btn" type="submit" disabled={busy || !canEdit || roundedArea <= 0}>
-          {busy ? "Generating..." : canEdit ? "Generate from Takeoff" : "Draft Restricted"}
+          {busy ? "Generating…" : canEdit ? "Generate from Takeoff" : "Draft Restricted"}
         </button>
         {roundedArea > 0 ? (
           <span className="surface-copy text-sm">{roundedArea.toFixed(2)} sqm across {rooms.length} room{rooms.length !== 1 ? "s" : ""}</span>
@@ -3378,7 +3376,7 @@ export function EstimatesPage({
               </div>
             ) : null}
 
-            <div className="mb-5 flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1 w-fit">
+            <div className="sidebar-panel mb-5 flex gap-1 rounded-xl border p-1 w-fit">
               {[{ key: "prompt", label: "AI Prompt" }, { key: "takeoff", label: "Takeoff Form" }].map(({ key, label }) => (
                 <button
                   key={key}
@@ -3386,8 +3384,8 @@ export function EstimatesPage({
                   onClick={() => setGenerateMode(key)}
                   className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition ${
                     generateMode === key
-                      ? "bg-sky-500/20 text-sky-200 border border-sky-400/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "surface-pill--accent bg-sky-500/15"
+                      : "surface-copy hover:opacity-80"
                   }`}
                 >
                   {label}
@@ -3410,8 +3408,8 @@ export function EstimatesPage({
                   <p className="app-label font-medium">Project Brief</p>
                   <span className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
                     promptQuality.isReady
-                      ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                      : "border border-sky-400/20 bg-sky-400/10 text-sky-300"
+                      ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                      : "border border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300"
                   }`}>
                     {promptQuality.isReady ? "Ready" : "Needs detail"}
                   </span>
@@ -3433,7 +3431,7 @@ export function EstimatesPage({
                           key={t.id}
                           type="button"
                           title={t.prompt}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 transition hover:border-sky-400/30 hover:bg-sky-400/[0.06]"
+                          className="surface-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition hover:border-sky-400/30 hover:opacity-80"
                           onClick={() => applyPromptExample(t.prompt)}
                         >
                           {t.isDefault ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" /> : null}
@@ -3443,7 +3441,7 @@ export function EstimatesPage({
                       {sortedPromptTemplates.length > 4 ? (
                         <button
                           type="button"
-                          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-400 transition hover:text-slate-200"
+                          className="surface-pill rounded-full px-3 py-1.5 text-xs transition hover:opacity-80"
                           onClick={() => setShowAllSaved((v) => !v)}
                         >
                           {showAllSaved ? "Show less" : `+${sortedPromptTemplates.length - 4} more`}
@@ -3454,7 +3452,7 @@ export function EstimatesPage({
                       {canEditEstimate && estimateForm.prompt.trim() && !showInlineSave ? (
                         <button
                           type="button"
-                          className="text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
+                          className="surface-copy text-xs underline-offset-2 hover:opacity-80 hover:underline"
                           onClick={openInlineSave}
                           disabled={promptTemplateBusy}
                         >
@@ -3464,7 +3462,7 @@ export function EstimatesPage({
                       {defaultPromptTemplate && estimateForm.prompt.trim() !== defaultPromptTemplate.prompt ? (
                         <button
                           type="button"
-                          className="text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
+                          className="surface-copy text-xs underline-offset-2 hover:opacity-80 hover:underline"
                           onClick={() => applyPromptExample(defaultPromptTemplate.prompt)}
                         >
                           Use default
@@ -3480,7 +3478,7 @@ export function EstimatesPage({
                         <button
                           key={ex}
                           type="button"
-                          className="rounded-[12px] border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-[12px] text-slate-300 transition hover:border-sky-400/30 hover:bg-sky-400/[0.06]"
+                          className="surface-card rounded-xl px-3 py-2 text-left text-[12px] surface-copy transition hover:border-sky-400/30 hover:opacity-80"
                           onClick={() => applyPromptExample(ex)}
                         >
                           {ex.slice(0, 90)}…
@@ -3553,7 +3551,7 @@ export function EstimatesPage({
                 ) : null}
 
                 {promptQuality.warnings.length ? (
-                  <div className="rounded-lg border border-sky-400/20 bg-sky-400/8 px-4 py-3">
+                  <div className="rounded-lg border border-sky-500/30 bg-sky-500/8 px-4 py-3">
                     <div className="grid gap-1">
                       {promptQuality.warnings.slice(0, 3).map((warning) => (
                         <p key={warning} className="surface-copy text-sm">{warning}</p>
@@ -3652,7 +3650,7 @@ export function EstimatesPage({
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button className="primary-btn" type="submit" disabled={generateBusy || !canEditEstimate}>
-                  {generateBusy ? "Generating..." : canEditEstimate ? "Generate Draft" : "Draft Restricted"}
+                  {generateBusy ? "Generating…" : canEditEstimate ? "Generate Draft" : "Draft Restricted"}
                 </button>
                 <span className="surface-copy text-sm">AI draft becomes the active estimate.</span>
                 {!canEditEstimate ? <Banner tone="warn">Read-only role. Draft generation is disabled.</Banner> : null}

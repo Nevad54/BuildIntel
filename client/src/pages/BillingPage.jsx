@@ -224,7 +224,7 @@ export function BillingPage({
                 />
                 <div className="flex flex-wrap items-center gap-3">
                   <button className="ghost-btn" type="submit" disabled={templateBusy}>
-                    {templateBusy ? "Saving..." : "Create Template"}
+                    {templateBusy ? "Saving…" : "Create Template"}
                   </button>
                   <p className="surface-copy text-sm">Templates become available immediately in the estimate generator.</p>
                 </div>

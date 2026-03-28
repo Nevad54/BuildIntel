@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none" role="img" aria-label="BuildIntel">
+  <defs>
+    <linearGradient id="bfl-grad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="bfl-grad-mid" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0EA5E9"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="bfl-intel-grad" x1="112" y1="0" x2="172" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Blueprint grid -->
+  <line x1="6"  y1="32" x2="42" y2="32" stroke="url(#bfl-grad)" stroke-width="0.5" stroke-opacity="0.18"/>
+  <line x1="6"  y1="22" x2="42" y2="22" stroke="url(#bfl-grad)" stroke-width="0.5" stroke-opacity="0.18"/>
+  <line x1="6"  y1="12" x2="42" y2="12" stroke="url(#bfl-grad)" stroke-width="0.5" stroke-opacity="0.18"/>
+  <line x1="16" y1="8"  x2="16" y2="42" stroke="url(#bfl-grad)" stroke-width="0.5" stroke-opacity="0.18"/>
+  <line x1="26" y1="8"  x2="26" y2="42" stroke="url(#bfl-grad)" stroke-width="0.5" stroke-opacity="0.18"/>
+
+  <!-- Ground line -->
+  <line x1="6" y1="40" x2="42" y2="40" stroke="url(#bfl-grad)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Left tower body -->
+  <path d="M8 10 L8 40 L24 40 L24 10 Z"
+    stroke="url(#bfl-grad)" stroke-width="1.5" stroke-linejoin="round"
+    fill="url(#bfl-grad)" fill-opacity="0.1"/>
+
+  <!-- Parapet roofline -->
+  <polyline points="8,10 12,10 12,14 16,14 16,10 20,10 20,14 24,14 24,10"
+    stroke="url(#bfl-grad)" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+
+  <!-- Windows -->
+  <rect x="11" y="18" width="4" height="4" rx="0.5" fill="url(#bfl-grad)" fill-opacity="0.6"/>
+  <rect x="17" y="18" width="4" height="4" rx="0.5" fill="url(#bfl-grad)" fill-opacity="0.6"/>
+  <rect x="11" y="24" width="4" height="4" rx="0.5" fill="url(#bfl-grad)" fill-opacity="0.6"/>
+  <rect x="17" y="24" width="4" height="4" rx="0.5" fill="url(#bfl-grad)" fill-opacity="0.6"/>
+  <rect x="11" y="30" width="4" height="4" rx="0.5" fill="url(#bfl-grad-mid)" fill-opacity="1"/>
+
+  <!-- Bar chart -->
+  <rect x="28" y="32" width="3" height="8"  rx="1" fill="url(#bfl-grad)" fill-opacity="0.45"/>
+  <rect x="33" y="26" width="3" height="14" rx="1" fill="url(#bfl-grad)" fill-opacity="0.7"/>
+  <rect x="38" y="18" width="3" height="22" rx="1" fill="url(#bfl-grad)" fill-opacity="1"/>
+
+  <!-- Data node -->
+  <circle cx="39.5" cy="17" r="2" fill="url(#bfl-grad-mid)"/>
+  <line x1="32" y1="17" x2="37" y2="17" stroke="url(#bfl-grad-mid)" stroke-width="1"
+    stroke-dasharray="1.5 1.5" stroke-linecap="round" stroke-opacity="0.65"/>
+
+  <!-- "Build" — regular weight, dark slate -->
+  <text x="58" y="32"
+    font-family="'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif"
+    font-size="21" font-weight="400" letter-spacing="-0.4"
+    fill="#334155">Build</text>
+
+  <!-- "Intel" — semibold, deep blue gradient -->
+  <text x="112" y="32"
+    font-family="'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif"
+    font-size="21" font-weight="600" letter-spacing="-0.4"
+    fill="url(#bfl-intel-grad)">Intel</text>
+
+  <!-- Underline accent -->
+  <line x1="112" y1="37" x2="168" y2="37"
+    stroke="url(#bfl-intel-grad)" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.35"/>
+</svg>
