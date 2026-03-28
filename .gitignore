@@ -17,3 +17,6 @@ token.json
 .playwright-mcp/
 .mcp.json
 CLAUDE.md
+drawing-plan.pdf
+mep-plan.pdf
+estimates-snapshot.md
