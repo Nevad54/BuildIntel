@@ -4,7 +4,8 @@ import http from "node:http";
 import { demoData } from "../src/data.js";
 import { store } from "../src/store.js";
 import { startServer } from "../src/index.js";
-import { generateEstimate } from "../src/ai.js";
+import { config } from "../src/config.js";
+import { generateEstimate, recalculateEstimate } from "../src/ai.js";
 import { resetExchangeRatesCache } from "../src/exchange-rates.js";
 
 const login = async (baseUrl, email, password) => {
@@ -26,6 +27,39 @@ const bootstrap = async (baseUrl, token) => {
   });
 
   return response.json();
+};
+
+const createEstimateFixture = async ({
+  companyId = "company-1",
+  projectId = "project-1",
+  prompt = "Generate estimate for a 60 sqm bungalow house in Quezon City",
+  items,
+  status = "Draft"
+} = {}) => {
+  const estimateItems =
+    items ||
+    generateEstimate({
+      prompt,
+      materials: demoData.materials,
+      template: demoData.estimateTemplates[0]
+    }).items;
+
+  return store.insert("estimates", {
+    companyId,
+    projectId,
+    prompt,
+    createdAt: new Date().toISOString(),
+    ...recalculateEstimate({
+      location: "Quezon City",
+      areaSqm: 60,
+      wasteFactorPercent: 8,
+      overheadPercent: 12,
+      profitPercent: 18,
+      contingencyPercent: 7,
+      status,
+      items: estimateItems
+    })
+  });
 };
 
 test("register creates an isolated tenant workspace", async () => {
@@ -55,7 +89,10 @@ test("register creates an isolated tenant workspace", async () => {
     const originalBootstrap = await bootstrap(baseUrl, adminLogin.body.token);
     const newBootstrap = await bootstrap(baseUrl, registerBody.token);
 
-    assert.equal(originalBootstrap.projects.length, 1);
+    assert.equal(
+      originalBootstrap.projects.length,
+      demoData.projects.filter((entry) => entry.companyId === "company-1").length
+    );
     assert.equal(newBootstrap.projects.length, 0);
     assert.equal(newBootstrap.company.name, "Skyline Masonry");
   } finally {
@@ -69,12 +106,15 @@ test("document upload enforces file size limits", async () => {
 
   const server = await startServer(0);
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const originalMaxUploadBytes = config.maxUploadBytes;
 
   try {
+    config.maxUploadBytes = 1024;
+
     const adminLogin = await login(baseUrl, "admin@northforge.dev", "buildintel123");
     const workspace = await bootstrap(baseUrl, adminLogin.body.token);
     const projectId = workspace.projects[0].id;
-    const largeContent = Buffer.alloc(1048577, "a").toString("base64");
+    const largeContent = Buffer.alloc(config.maxUploadBytes + 1, "a").toString("base64");
 
     const response = await fetch(`${baseUrl}/api/projects/${projectId}/documents`, {
       method: "POST",
@@ -94,6 +134,7 @@ test("document upload enforces file size limits", async () => {
     assert.equal(response.status, 413);
     assert.match(body.message, /Upload exceeds limit/i);
   } finally {
+    config.maxUploadBytes = originalMaxUploadBytes;
     await new Promise((resolve) => server.close(resolve));
   }
 });
@@ -390,8 +431,15 @@ test("estimate market refresh falls back to workspace pricing data when web sear
   try {
     const adminLogin = await login(baseUrl, "admin@northforge.dev", "buildintel123");
     const token = adminLogin.body.token;
+    const estimate = await createEstimateFixture({
+      items: [
+        { material: "10mm Rebar", quantity: 40, unit: "piece", unitPrice: 190, category: "Materials" },
+        { material: "Portland Cement", quantity: 80, unit: "bag", unitPrice: 240, category: "Materials" },
+        { material: "Skilled Labor", quantity: 10, unit: "day", unitPrice: 1200, category: "Labor" }
+      ]
+    });
 
-    const refreshResponse = await fetch(`${baseUrl}/api/estimates/estimate-1/refresh-market-prices`, {
+    const refreshResponse = await fetch(`${baseUrl}/api/estimates/${estimate.id}/refresh-market-prices`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`
@@ -404,7 +452,7 @@ test("estimate market refresh falls back to workspace pricing data when web sear
     assert.equal(refreshBody.mode, "catalog");
     assert.ok(refreshBody.refreshedCount >= 2);
     assert.ok(refreshBody.estimate.items.some((item) => item.material === "10mm Rebar" && item.unitPrice === 215));
-    assert.ok(refreshBody.estimate.items.some((item) => item.material === "Portland Cement" && item.unitPrice === 258));
+    assert.ok(refreshBody.estimate.items.some((item) => item.material === "Portland Cement" && item.unitPrice === 260));
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -688,8 +736,9 @@ test("estimate approval flow enforces review and admin approval rules", async ()
     const estimatorLogin = await login(baseUrl, "estimator@northforge.dev", "buildintel123");
     const adminToken = adminLogin.body.token;
     const estimatorToken = estimatorLogin.body.token;
+    const estimate = await createEstimateFixture();
 
-    const reviewResponse = await fetch(`${baseUrl}/api/estimates/estimate-1/status`, {
+    const reviewResponse = await fetch(`${baseUrl}/api/estimates/${estimate.id}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -699,7 +748,7 @@ test("estimate approval flow enforces review and admin approval rules", async ()
     });
     const reviewed = await reviewResponse.json();
 
-    const approveDeniedResponse = await fetch(`${baseUrl}/api/estimates/estimate-1/status`, {
+    const approveDeniedResponse = await fetch(`${baseUrl}/api/estimates/${estimate.id}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -708,7 +757,7 @@ test("estimate approval flow enforces review and admin approval rules", async ()
       body: JSON.stringify({ status: "Approved" })
     });
 
-    const approveResponse = await fetch(`${baseUrl}/api/estimates/estimate-1/status`, {
+    const approveResponse = await fetch(`${baseUrl}/api/estimates/${estimate.id}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -718,7 +767,7 @@ test("estimate approval flow enforces review and admin approval rules", async ()
     });
     const approved = await approveResponse.json();
 
-    const editDeniedResponse = await fetch(`${baseUrl}/api/estimates/estimate-1`, {
+    const editDeniedResponse = await fetch(`${baseUrl}/api/estimates/${estimate.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

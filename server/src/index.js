@@ -8,18 +8,23 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { store } from "./store.js";
 import { authMiddleware, authorize, forgotPassword, login, register } from "./auth.js";
-import { analyzeBlueprint, generateEstimate, recalculateEstimate, simulatePricing } from "./ai.js";
+import { analyzeBlueprint, analyzeDocumentForBOQ, checkBoqCompleteness, generateEstimate, recalculateEstimate, refineEstimateBOQ, simulatePricing } from "./ai.js";
 import {
   analyzeBlueprintWithProvider,
+  analyzeCivilWithProvider,
+  analyzeMEPWithProvider,
   canUseOpenAIWebSearch,
   generateEstimateWithProvider,
+  getTokenUsage,
   refreshEstimatePricesWithWebSearch,
+  researchMaterialPricesWithAI,
+  runAgentPlan,
   shouldUseManagedAI
 } from "./ai-provider.js";
 import { buildPriceAlerts, researchPrices, supplierFinder } from "./pricing.js";
 import { importPricingFeed, importRemotePricingFeed } from "./pricing-provider.js";
-import { buildEstimatePdf } from "./pdf.js";
-import { extractUploadText, persistProjectDocument } from "./files.js";
+import { buildEstimatePdf, buildEstimateSummaryPdf, buildDpwhBoqPdf } from "./pdf.js";
+import { extractUploadText, extractUploadContent, extractCivilSignals, extractCivilSignalsFromDXF, persistProjectDocument, persistProjectFile, extractProjectFileText } from "./files.js";
 import { recordAudit } from "./audit.js";
 import { buildPlanUsage, getPlanRule } from "./plans.js";
 import { getExchangeRates } from "./exchange-rates.js";
@@ -37,7 +42,7 @@ export const createApp = async () => {
   await store.init();
 
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
-  app.use(express.json({ limit: "5mb" }));
+  app.use(express.json({ limit: "120mb" }));
   app.use((req, res, next) => {
   const startedAt = Date.now();
 
@@ -54,6 +59,10 @@ export const createApp = async () => {
   });
 
   next();
+  });
+
+  app.get("/api/token-usage", authMiddleware, (_req, res) => {
+    res.json(getTokenUsage());
   });
 
   app.get("/api/health", async (_req, res) => {
@@ -224,6 +233,7 @@ export const createApp = async () => {
       alerts: await buildPriceAlerts(store, req.user.companyId),
       subscriptions: await store.list("subscriptions"),
       planUsage,
+      tokenUsage: getTokenUsage(),
       aiProvider: config.aiProvider
     });
   } catch (error) {
@@ -235,9 +245,9 @@ export const createApp = async () => {
   try {
     const payload = z.object({
       name: z.string().min(2),
-      location: z.string().min(2),
-      description: z.string().min(10),
-      areaSqm: z.number().positive()
+      location: z.string().optional().default(""),
+      description: z.string().optional().default(""),
+      areaSqm: z.number().nonnegative().optional().default(0)
     }).parse(req.body);
 
     const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
@@ -275,10 +285,10 @@ export const createApp = async () => {
   try {
     const payload = z.object({
       name: z.string().min(2).optional(),
-      location: z.string().min(2).optional(),
-      description: z.string().min(10).optional(),
+      location: z.string().optional(),
+      description: z.string().optional(),
       status: z.enum(["Estimating", "Submitted", "Won", "Lost"]).optional(),
-      areaSqm: z.number().positive().optional()
+      areaSqm: z.number().nonnegative().optional()
     }).parse(req.body);
 
     const current = await store.find(
@@ -304,6 +314,33 @@ export const createApp = async () => {
     next(error);
   }
 });
+
+  app.delete("/api/projects/:id", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const existing = await store.find(
+      "projects",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+
+    if (!existing) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    await store.delete("projects", existing.id);
+    await recordAudit({
+      companyId: req.user.companyId,
+      actorUserId: req.user.id,
+      action: "project.delete",
+      entityType: "project",
+      entityId: existing.id,
+      details: { name: existing.name }
+    });
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+  });
 
   app.post("/api/templates", authMiddleware, authorize("Admin"), async (req, res, next) => {
   try {
@@ -347,7 +384,9 @@ app.post("/api/materials", authMiddleware, authorize("Admin", "Estimator"), asyn
 
     const material = await store.insert("materials", {
       companyId: req.user.companyId,
-      ...payload
+      ...payload,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
 
     await recordAudit({
@@ -365,7 +404,7 @@ app.post("/api/materials", authMiddleware, authorize("Admin", "Estimator"), asyn
   }
 });
 
-  app.patch("/api/materials/:id", authMiddleware, authorize("Admin"), async (req, res, next) => {
+  app.patch("/api/materials/:id", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
   try {
     const payload = z.object({
       averagePrice: z.number().nonnegative().optional(),
@@ -383,7 +422,10 @@ app.post("/api/materials", authMiddleware, authorize("Admin", "Estimator"), asyn
       return res.status(404).json({ message: "Material not found" });
     }
 
-    const updated = await store.update("materials", req.params.id, payload);
+    const updated = await store.update("materials", req.params.id, {
+      ...payload,
+      updatedAt: new Date().toISOString()
+    });
     await recordAudit({
       companyId: req.user.companyId,
       actorUserId: req.user.id,
@@ -410,9 +452,174 @@ app.post("/api/materials", authMiddleware, authorize("Admin", "Estimator"), asyn
     res.json(
       await analyzeBlueprintWithProvider({
         ...payload,
-        extractedText: extractUploadText(payload)
+        extractedText: await extractUploadText(payload)
       })
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Project File Library ─────────────────────────────────────────────────────
+// Upload a file to the project library (any file type — PDF, DXF, image, Excel, Word, PPT…)
+app.post("/api/projects/:id/files", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const payload = z.object({
+      filename: z.string().min(1),
+      mimeType: z.string().optional().default("application/octet-stream"),
+      sizeBytes: z.number().optional().default(0),
+      contentBase64: z.string()
+    }).parse(req.body);
+
+    const project = await store.find(
+      "projects",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const storedPath = await persistProjectFile({
+      companyId: req.user.companyId,
+      filename: payload.filename,
+      contentBase64: payload.contentBase64
+    });
+
+    // Best-effort text extraction for AI context
+    const extractedText = await extractProjectFileText(storedPath, payload.filename);
+
+    const file = await store.insert("projectFiles", {
+      companyId: req.user.companyId,
+      projectId: project.id,
+      filename: payload.filename,
+      mimeType: payload.mimeType,
+      sizeBytes: payload.sizeBytes,
+      storedPath,
+      extractedText: extractedText || null,
+      uploadedAt: new Date().toISOString()
+    });
+
+    res.status(201).json(file);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// List files for a project
+app.get("/api/projects/:id/files", authMiddleware, async (req, res, next) => {
+  try {
+    const project = await store.find(
+      "projects",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const files = await store.list(
+      "projectFiles",
+      (entry) => entry.projectId === req.params.id && entry.companyId === req.user.companyId
+    );
+    res.json(files.map((f) => ({ id: f.id, filename: f.filename, mimeType: f.mimeType, sizeBytes: f.sizeBytes, uploadedAt: f.uploadedAt })));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Attach a file to the project library from an existing document
+app.post("/api/projects/:id/files/from-document", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const { documentId } = z.object({ documentId: z.string().min(1) }).parse(req.body);
+
+    const project = await store.find(
+      "projects",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const doc = await store.find(
+      "documents",
+      (entry) => entry.id === documentId && entry.companyId === req.user.companyId
+    );
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    // Read the stored document file and re-persist as a project file
+    const buffer = await import("node:fs/promises").then(m => m.readFile(doc.storedPath));
+    const contentBase64 = buffer.toString("base64");
+
+    const storedPath = await persistProjectFile({
+      companyId: req.user.companyId,
+      filename: doc.filename,
+      contentBase64
+    });
+
+    const extractedText = await extractProjectFileText(storedPath, doc.filename);
+
+    const mimeType = doc.filename.endsWith(".pdf") ? "application/pdf"
+      : doc.filename.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? `image/${doc.filename.split(".").pop().toLowerCase()}`
+      : "application/octet-stream";
+
+    const file = await store.insert("projectFiles", {
+      companyId: req.user.companyId,
+      projectId: project.id,
+      filename: doc.filename,
+      mimeType,
+      sizeBytes: buffer.byteLength,
+      storedPath,
+      extractedText: extractedText || null,
+      uploadedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({ id: file.id, filename: file.filename, mimeType: file.mimeType, sizeBytes: file.sizeBytes, uploadedAt: file.uploadedAt });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a project file
+app.delete("/api/projects/:id/files/:fileId", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const file = await store.find(
+      "projectFiles",
+      (entry) => entry.id === req.params.fileId && entry.projectId === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!file) return res.status(404).json({ message: "File not found" });
+    await store.delete("projectFiles", file.id);
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Promote a project file into the Documents review queue for AI analysis
+app.post("/api/projects/:id/files/:fileId/promote", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const { docType } = z.object({ docType: z.enum(["architectural", "mep", "civil"]).default("architectural") }).parse(req.body);
+
+    const project = await store.find("projects", (e) => e.id === req.params.id && e.companyId === req.user.companyId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const file = await store.find("projectFiles", (e) => e.id === req.params.fileId && e.projectId === req.params.id && e.companyId === req.user.companyId);
+    if (!file) return res.status(404).json({ message: "File not found" });
+
+    // Re-persist the file as a document (separate stored copy)
+    const buffer = await import("node:fs/promises").then(m => m.readFile(file.storedPath));
+    const contentBase64 = buffer.toString("base64");
+    const storedPath = await persistProjectDocument({ companyId: req.user.companyId, filename: file.filename, contentBase64 });
+
+    // Use the already-extracted text from the project file as the summary
+    const document = await store.insert("documents", {
+      companyId: req.user.companyId,
+      projectId: project.id,
+      filename: file.filename,
+      storedPath,
+      notes: file.extractedText || "",
+      areaHint: project.areaSqm,
+      docType,
+      extractionSummary: file.extractedText ? file.extractedText.slice(0, 500) : null,
+      extracted: {},
+      boq: [],
+      reviewStatus: "Pending",
+      createdAt: new Date().toISOString()
+    });
+
+    res.status(201).json({ id: document.id, filename: document.filename, reviewStatus: document.reviewStatus });
   } catch (error) {
     next(error);
   }
@@ -421,10 +628,12 @@ app.post("/api/materials", authMiddleware, authorize("Admin", "Estimator"), asyn
 app.post("/api/projects/:id/documents", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
   try {
     const payload = z.object({
-      filename: z.string().min(3),
+      filename: z.string().min(1),
       notes: z.string().optional().default(""),
       areaHint: z.number().positive().optional(),
-      contentBase64: z.string().optional()
+      contentBase64: z.union([z.string(), z.array(z.string())]).optional(),
+      filenames: z.array(z.string()).optional(),
+      docType: z.enum(["architectural", "mep", "civil"]).default("architectural")
     }).parse(req.body);
 
     const project = await store.find(
@@ -436,14 +645,115 @@ app.post("/api/projects/:id/documents", authMiddleware, authorize("Admin", "Esti
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const analysis = await analyzeBlueprintWithProvider({
+    // Handle multiple files — extract and merge signals from each
+    const contentArray = Array.isArray(payload.contentBase64)
+      ? payload.contentBase64
+      : payload.contentBase64 ? [payload.contentBase64] : [];
+    const filenameArray = payload.filenames || [payload.filename];
+
+    const decodedBytes = contentArray.reduce((total, entry) => {
+      const sanitized = String(entry || "").replace(/\s+/g, "");
+      if (!sanitized) {
+        return total;
+      }
+
+      const padding = sanitized.endsWith("==") ? 2 : sanitized.endsWith("=") ? 1 : 0;
+      return total + Math.max(0, Math.floor((sanitized.length * 3) / 4) - padding);
+    }, 0);
+
+    if (decodedBytes > config.maxUploadBytes) {
+      return res.status(413).json({
+        message: `Upload exceeds limit of ${config.maxUploadBytes} bytes.`
+      });
+    }
+
+    // For the primary content (used by blueprint/MEP analysis), use the first file
+    const primaryPayload = { ...payload, contentBase64: contentArray[0] };
+    const { text: extractedText, images: extractedImages, isDxf } = await extractUploadContent(primaryPayload);
+
+    // For civil docs, extract signals deterministically before calling AI.
+    // DXF gives exact geometry; PDF falls back to symbol counting from text.
+    // Multiple DXFs: extract from each and merge counts.
+    let civilSignals = null;
+    if (payload.docType === "civil") {
+      // Extract signals from every uploaded file (PDF or DXF), then merge.
+      // This supports mixed uploads: e.g. one PDF (symbol counts) + one or more DXFs (geometry).
+      const allSignals = await Promise.all(
+        contentArray.map(async (b64, i) => {
+          const fname = filenameArray[i] || payload.filename;
+          const { text, isDxf: isThisDxf } = await extractUploadContent({ ...payload, filename: fname, contentBase64: b64 });
+          if (isThisDxf) return extractCivilSignalsFromDXF(text);
+          if (text) return extractCivilSignals(text);
+          return null;
+        })
+      );
+      const valid = allSignals.filter(Boolean);
+      if (valid.length > 0) {
+        // Merge strategy:
+        // - Symbol counts (FH, G, CB, MH, SM): take the MAX across files — PDF has the real counts,
+        //   DXF blocks are usually 0 (symbols drawn as geometry). Max avoids double-counting.
+        // - Road / pipe lengths: prefer DXF values (exact geometry) over PDF stationing estimates.
+        //   Concat pipe arrays so all layers from all files appear.
+        const dxfSignals = valid.filter(s => s.source === "dxf");
+        const pdfSignals = valid.filter(s => s.source !== "dxf");
+        const symbolSource = pdfSignals.length > 0 ? pdfSignals : dxfSignals;
+        civilSignals = {
+          source: dxfSignals.length > 0 ? "dxf+pdf" : "pdf",
+          fireHydrants:   Math.max(...symbolSource.map(s => s.fireHydrants  || 0)),
+          gateValves:     Math.max(...symbolSource.map(s => s.gateValves    || 0)),
+          blowOffValves:  Math.max(...symbolSource.map(s => s.blowOffValves || 0)),
+          catchBasins:    Math.max(...symbolSource.map(s => s.catchBasins   || 0)),
+          manholes:       Math.max(...symbolSource.map(s => s.manholes      || 0)),
+          sewerManholes:  Math.max(...symbolSource.map(s => s.sewerManholes || 0)),
+          // Road length: prefer DXF (geometry) over PDF (stationing estimate)
+          totalRoadLengthM: dxfSignals.length > 0
+            ? Math.max(...dxfSignals.map(s => s.totalRoadLengthM || 0))
+            : Math.max(...pdfSignals.map(s => s.totalRoadLengthM || 0)),
+          // Deduplicate pipe entries by their size label — keep the one with the largest length.
+          // Entry format from files.js: "100mm PVC waterline: 2952m" or "Waterline pipe (size TBC): 2952m"
+          waterlinePipes: (() => {
+            const bySizeKey = {};
+            valid.flatMap(s => s.waterlinePipes || []).forEach(entry => {
+              const sizeMatch = entry.match(/^([^:]+):/);
+              const lenMatch  = entry.match(/:?\s*(\d+(?:\.\d+)?)m$/);
+              const key = sizeMatch ? sizeMatch[1].trim().toLowerCase() : entry;
+              const len = lenMatch ? Number(lenMatch[1]) : 0;
+              if (!bySizeKey[key] || len > bySizeKey[key].len) {
+                bySizeKey[key] = { entry, len };
+              }
+            });
+            return Object.values(bySizeKey).map(v => v.entry);
+          })(),
+          drainagePipes: (() => {
+            const bySizeKey = {};
+            valid.flatMap(s => s.drainagePipes || []).forEach(entry => {
+              const sizeMatch = entry.match(/^([^:]+):/);
+              const lenMatch  = entry.match(/:?\s*(\d+(?:\.\d+)?)m$/);
+              const key = sizeMatch ? sizeMatch[1].trim().toLowerCase() : entry;
+              const len = lenMatch ? Number(lenMatch[1]) : 0;
+              if (!bySizeKey[key] || len > bySizeKey[key].len) {
+                bySizeKey[key] = { entry, len };
+              }
+            });
+            return Object.values(bySizeKey).map(v => v.entry);
+          })(),
+          allBlocks:      valid.flatMap(s => s.allBlocks      || []),
+          layerSummary:   valid.flatMap(s => s.layerSummary   || [])
+        };
+      }
+    }
+
+    const analyzeDoc = payload.docType === "mep" ? analyzeMEPWithProvider : payload.docType === "civil" ? analyzeCivilWithProvider : analyzeBlueprintWithProvider;
+    const analysis = await analyzeDoc({
       ...payload,
-      extractedText: extractUploadText(payload)
+      extractedText,
+      images: extractedImages,
+      civilSignals
     });
     const storedPath = await persistProjectDocument({
       companyId: req.user.companyId,
       filename: payload.filename,
-      contentBase64: payload.contentBase64,
+      contentBase64: contentArray[0],
       notes: payload.notes
     });
 
@@ -454,6 +764,7 @@ app.post("/api/projects/:id/documents", authMiddleware, authorize("Admin", "Esti
       storedPath,
       notes: payload.notes,
       areaHint: payload.areaHint || project.areaSqm,
+      docType: payload.docType,
       extractionSummary: analysis.summary,
       extracted: analysis.extracted,
       boq: analysis.boq,
@@ -478,14 +789,30 @@ app.post("/api/projects/:id/documents", authMiddleware, authorize("Admin", "Esti
 
 app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
   try {
+    const architecturalExtracted = z.object({
+      roomDimensions: z.array(z.string()),
+      wallLengths: z.number().nonnegative(),
+      floorAreas: z.number().nonnegative(),
+      structuralElements: z.array(z.string())
+    });
+    const mepExtracted = z.object({
+      pipes: z.array(z.string()),
+      fixtures: z.array(z.string()),
+      valves: z.array(z.string()),
+      equipment: z.array(z.string())
+    });
+    const civilExtracted = z.object({
+      lotCount: z.number().nonnegative(),
+      lotSizeSqm: z.number().nonnegative(),
+      roadLengthM: z.number().nonnegative(),
+      roadDetails: z.array(z.string()),
+      drainagePipes: z.array(z.string()),
+      waterlinePipes: z.array(z.string()),
+      otherInfrastructure: z.array(z.string())
+    });
     const payload = z.object({
       extractionSummary: z.string().min(10),
-      extracted: z.object({
-        roomDimensions: z.array(z.string()),
-        wallLengths: z.number().nonnegative(),
-        floorAreas: z.number().nonnegative(),
-        structuralElements: z.array(z.string())
-      }),
+      extracted: z.union([architecturalExtracted, mepExtracted, civilExtracted]),
       reviewStatus: z.enum(["Pending", "Reviewed", "Approved"])
     }).parse(req.body);
 
@@ -513,12 +840,41 @@ app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estim
   }
 });
 
+  app.delete("/api/documents/:id", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const existing = await store.find(
+      "documents",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+
+    if (!existing) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    await store.delete("documents", existing.id);
+    await recordAudit({
+      companyId: req.user.companyId,
+      actorUserId: req.user.id,
+      action: "document.delete",
+      entityType: "document",
+      entityId: existing.id,
+      details: { filename: existing.filename }
+    });
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+  });
+
   app.post("/api/ai/estimate", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
   try {
     const payload = z.object({
       prompt: z.string().min(10),
       projectId: z.string().optional(),
-      templateId: z.string().optional()
+      templateId: z.string().optional(),
+      discipline: z.string().optional(),
+      documentId: z.string().optional()
     }).parse(req.body);
 
     const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
@@ -556,24 +912,69 @@ app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estim
       }
     }
 
+    // Build project file context for AI — list filenames + extracted text from library
+    let projectFileContext = "";
+    if (projectId) {
+      const projectFiles = await store.list(
+        "projectFiles",
+        (entry) => entry.projectId === projectId && entry.companyId === req.user.companyId
+      );
+      if (projectFiles.length > 0) {
+        const lines = projectFiles.map((f) =>
+          f.extractedText
+            ? `- ${f.filename} (${f.mimeType}): ${f.extractedText.slice(0, 800)}`
+            : `- ${f.filename} (${f.mimeType})`
+        );
+        projectFileContext = `\n\nProject file library (${projectFiles.length} attached files):\n${lines.join("\n")}`;
+      }
+    }
+
+    const enrichedPrompt = payload.prompt + projectFileContext;
+
       const estimate = shouldUseManagedAI()
         ? await generateEstimateWithProvider({
-            prompt: payload.prompt,
+            prompt: enrichedPrompt,
             materials,
-            template
+            template,
+            discipline: payload.discipline || ""
         })
       : generateEstimate({
-          prompt: payload.prompt,
+          prompt: enrichedPrompt,
           materials,
-          template
+          template,
+          discipline: payload.discipline || ""
         });
+
+    // Deduplicate BOQ items: merge rows with identical (material, unit, category)
+    // keeping the one with the highest quantity. This prevents the same pipe or
+    // fitting from appearing multiple times when the AI repeats profile items.
+    const dedupedItems = (() => {
+      const seen = new Map();
+      const order = [];
+      for (const item of estimate.items || []) {
+        const key = `${(item.material || "").toLowerCase().trim()}||${(item.unit || "").toLowerCase().trim()}||${item.category}`;
+        if (seen.has(key)) {
+          const existing = seen.get(key);
+          if ((Number(item.quantity) || 0) > (Number(existing.quantity) || 0)) {
+            seen.set(key, item);
+          }
+        } else {
+          seen.set(key, item);
+          order.push(key);
+        }
+      }
+      return order.map((k) => seen.get(k));
+    })();
 
     const saved = await store.insert("estimates", {
       companyId: req.user.companyId,
       projectId,
+      documentId: payload.documentId || null,
+      discipline: payload.discipline || "",
       prompt: payload.prompt,
       createdAt: new Date().toISOString(),
-      ...estimate
+      ...estimate,
+      items: dedupedItems
     });
 
     await recordAudit({
@@ -591,6 +992,76 @@ app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estim
   }
 });
 
+  app.post("/api/ai/analyze-document", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+    try {
+      const payload = z.object({
+        text: z.string().min(5),
+        areaHint: z.number().optional(),
+        discipline: z.string().optional(),
+        templateId: z.string().optional()
+      }).parse(req.body);
+
+      const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
+      const planRule = getPlanRule(company?.plan);
+      if (!planRule.aiEstimates) {
+        return res.status(403).json({ message: "AI document analysis requires the Pro plan or higher." });
+      }
+
+      const materials = await store.list("materials", (entry) => entry.companyId === req.user.companyId);
+      const template =
+        (payload.templateId
+          ? await store.find("estimateTemplates", (entry) => entry.id === payload.templateId && entry.companyId === req.user.companyId)
+          : undefined) ||
+        (await store.find("estimateTemplates", (entry) => entry.companyId === req.user.companyId));
+
+      if (!template) {
+        return res.status(400).json({ message: "No estimate template available." });
+      }
+
+      const promptText = payload.areaHint ? `${payload.text} (area: ${payload.areaHint} sqm)` : payload.text;
+      const result = analyzeDocumentForBOQ({ text: promptText, materials, template, discipline: payload.discipline || "" });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/ai/refine-estimate", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+    try {
+      const payload = z.object({
+        items: z.array(z.object({}).passthrough()).min(1),
+        instruction: z.string().min(3),
+        areaHint: z.number().optional()
+      }).parse(req.body);
+
+      const materials = await store.list("materials", (entry) => entry.companyId === req.user.companyId);
+      const result = refineEstimateBOQ({ items: payload.items, instruction: payload.instruction, materials, areaHint: payload.areaHint });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/ai/agent", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+    try {
+      const payload = z.object({
+        message: z.string().min(2),
+        context: z.object({
+          currentEstimate: z.object({}).passthrough().optional(),
+          itemCount: z.number().optional(),
+          boqSample: z.array(z.object({}).passthrough()).optional(),
+          projects: z.array(z.object({}).passthrough()).optional(),
+          documentCount: z.number().optional()
+        }).optional().default({})
+      }).parse(req.body);
+
+      const result = await runAgentPlan({ message: payload.message, context: payload.context });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/pricing/research", authMiddleware, async (req, res, next) => {
   try {
     const payload = z.object({
@@ -605,7 +1076,13 @@ app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estim
       return res.status(403).json({ message: `Supplier comparison requires the Pro plan or higher.` });
     }
 
-    res.json(await researchPrices(payload, store));
+    const localResult = await researchPrices(payload, store);
+    if (localResult.suppliers?.length) {
+      res.json(localResult);
+    } else {
+      const aiResult = await researchMaterialPricesWithAI(payload);
+      res.json(aiResult);
+    }
   } catch (error) {
     next(error);
   }
@@ -614,7 +1091,7 @@ app.patch("/api/documents/:id/review", authMiddleware, authorize("Admin", "Estim
   app.post("/api/pricing/suppliers", authMiddleware, async (req, res, next) => {
   try {
     const payload = z.object({
-      location: z.string().min(2),
+      location: z.string().optional(),
       material: z.string().optional()
     }).parse(req.body);
 
@@ -781,7 +1258,11 @@ app.patch("/api/estimates/:id", authMiddleware, authorize("Admin", "Estimator"),
           quantity: z.number().nonnegative(),
           unit: z.string().min(1),
           unitPrice: z.number().nonnegative(),
-          category: z.enum(["Materials", "Labor", "Equipment"])
+          category: z.enum(["Materials", "Labor", "Equipment"]),
+          remarks: z.string().optional().default(""),
+          payItem: z.string().optional().default(""),
+          locked: z.boolean().optional().default(false),
+          qtoFormula: z.string().optional().default("")
         })
       )
     }).parse(req.body);
@@ -888,6 +1369,23 @@ app.patch("/api/estimates/:id/status", authMiddleware, authorize("Admin", "Estim
   }
 });
 
+app.delete("/api/estimates/:id", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const current = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!current) return res.status(404).json({ message: "Estimate not found" });
+    if (current.status === "Approved" && req.user.role !== "Admin") {
+      return res.status(403).json({ message: "Only admins can delete approved estimates." });
+    }
+    await store.delete("estimates", req.params.id);
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/estimates/:id/pdf", authMiddleware, async (req, res, next) => {
   try {
     const estimate = await store.find(
@@ -909,6 +1407,211 @@ app.get("/api/estimates/:id/pdf", authMiddleware, async (req, res, next) => {
       };
     const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
     buildEstimatePdf(estimate, project, company, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/estimates/:id/csv", authMiddleware, async (req, res, next) => {
+  try {
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+
+    const project = (await store.find(
+      "projects",
+      (entry) => entry.id === estimate.projectId && entry.companyId === req.user.companyId
+    )) || { name: "Construction Estimate", location: "N/A" };
+
+    const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
+
+    // Build CSV
+    const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+    const rows = [
+      // Header block
+      [esc(company?.name || ""), "", "", "", "", "", "", "", ""],
+      [esc("BuildIntel Construction Estimate"), "", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", "", ""],
+      [esc(`Project: ${project.name}`), "", "", "", "", "", "", "", ""],
+      [esc(`Location: ${project.location}`), "", "", "", "", "", "", "", ""],
+      [esc(`Status: ${estimate.status || "Draft"}`), "", "", "", "", "", "", "", ""],
+      [esc(`Generated: ${new Date().toLocaleDateString()}`), "", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", "", ""],
+      // Column headers
+      [esc("Category"), esc("Pay Item"), esc("Material / Description"), esc("Quantity"), esc("Unit"), esc("Unit Price (PHP)"), esc("Subtotal (PHP)"), esc("Remarks"), esc("Locked")],
+      // Item rows grouped by category
+      ...["Materials", "Labor", "Equipment"].flatMap((cat) => {
+        const catItems = (estimate.items || []).filter((i) => i.category === cat);
+        if (!catItems.length) return [];
+        return [
+          [esc(cat), "", "", "", "", "", "", "", ""],
+          ...catItems.map((i) => [
+            esc(cat),
+            esc(i.payItem || ""),
+            esc(i.material),
+            esc(Number(i.quantity) || 0),
+            esc(i.unit),
+            esc(Number(i.unitPrice) || 0),
+            esc((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0)),
+            esc(i.remarks || ""),
+            esc(i.locked ? "Yes" : "")
+          ])
+        ];
+      }),
+      // Summary
+      ["", "", "", "", "", "", "", "", ""],
+      [esc("Direct Cost"), "", "", "", "", "", esc(estimate.directCost || 0), "", ""],
+      [esc("Overhead"), esc(`${estimate.overheadPercent || 0}%`), "", "", "", "", esc(Math.round((estimate.directCost || 0) * (estimate.overheadPercent || 0) / 100)), "", ""],
+      [esc("Profit"), esc(`${estimate.profitPercent || 0}%`), "", "", "", "", esc(Math.round((estimate.directCost || 0) * (estimate.profitPercent || 0) / 100)), "", ""],
+      [esc("Contingency"), esc(`${estimate.contingencyPercent || 0}%`), "", "", "", "", esc(Math.round((estimate.directCost || 0) * (estimate.contingencyPercent || 0) / 100)), "", ""],
+      [esc("Final Contract Price"), "", "", "", "", "", esc(estimate.finalContractPrice || 0), "", ""]
+    ];
+
+    const csv = rows.map((r) => r.join(",")).join("\r\n");
+    const filename = `${project.name.replace(/\s+/g, "-").toLowerCase()}-estimate.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send("\uFEFF" + csv); // BOM for Excel UTF-8 compatibility
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Bulk reprice: update unitPrice for all rows whose material name matches a keyword
+app.post("/api/estimates/:id/bulk-reprice", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const payload = z.object({
+      materialKeyword: z.string().min(1),
+      newUnitPrice: z.number().nonnegative()
+    }).parse(req.body);
+
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+    if (estimate.status === "Approved" && req.user.role !== "Admin") {
+      return res.status(403).json({ message: "Approved estimates can only be edited by admins." });
+    }
+
+    const keyword = payload.materialKeyword.toLowerCase();
+    let matchCount = 0;
+    const updatedItems = (estimate.items || []).map((item) => {
+      if (item.locked) return item; // respect locked rows
+      if ((item.material || "").toLowerCase().includes(keyword)) {
+        matchCount++;
+        return { ...item, unitPrice: payload.newUnitPrice };
+      }
+      return item;
+    });
+
+    const recalculated = recalculateEstimate({ ...estimate, items: updatedItems, updatedAt: new Date().toISOString() });
+    const updated = await store.update("estimates", req.params.id, recalculated);
+    res.json({ ...updated, matchCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Snapshot: save a named version snapshot of the current estimate for later diff
+app.post("/api/estimates/:id/snapshot", authMiddleware, authorize("Admin", "Estimator"), async (req, res, next) => {
+  try {
+    const payload = z.object({ label: z.string().min(1).max(80) }).parse(req.body);
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+
+    const snapshot = await store.insert("estimateSnapshots", {
+      companyId: req.user.companyId,
+      estimateId: req.params.id,
+      label: payload.label,
+      createdAt: new Date().toISOString(),
+      items: estimate.items,
+      directCost: estimate.directCost,
+      finalContractPrice: estimate.finalContractPrice,
+      itemCount: (estimate.items || []).length
+    });
+    res.status(201).json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// List snapshots for an estimate
+app.get("/api/estimates/:id/snapshots", authMiddleware, async (req, res, next) => {
+  try {
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+    const snapshots = await store.list(
+      "estimateSnapshots",
+      (entry) => entry.estimateId === req.params.id && entry.companyId === req.user.companyId
+    );
+    res.json({ snapshots: snapshots.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// BOQ completeness checker
+app.get("/api/estimates/:id/completeness", authMiddleware, async (req, res, next) => {
+  try {
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+    const result = checkBoqCompleteness({
+      items: estimate.items || [],
+      discipline: estimate.discipline || "",
+      prompt: estimate.prompt || ""
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Executive summary PDF (single-page cover sheet)
+app.get("/api/estimates/:id/summary-pdf", authMiddleware, async (req, res, next) => {
+  try {
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+    const project = (await store.find(
+      "projects",
+      (entry) => entry.id === estimate.projectId && entry.companyId === req.user.companyId
+    )) || { name: "Construction Project", location: "Philippines" };
+    const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
+    buildEstimateSummaryPdf(estimate, project, company, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DPWH-formatted BOQ PDF
+app.get("/api/estimates/:id/dpwh-pdf", authMiddleware, async (req, res, next) => {
+  try {
+    const estimate = await store.find(
+      "estimates",
+      (entry) => entry.id === req.params.id && entry.companyId === req.user.companyId
+    );
+    if (!estimate) return res.status(404).json({ message: "Estimate not found" });
+    const project = (await store.find(
+      "projects",
+      (entry) => entry.id === estimate.projectId && entry.companyId === req.user.companyId
+    )) || { name: "Construction Project", location: "Philippines" };
+    const company = await store.find("companies", (entry) => entry.id === req.user.companyId);
+    buildDpwhBoqPdf(estimate, project, company, res);
   } catch (error) {
     next(error);
   }
