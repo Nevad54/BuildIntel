@@ -2,6 +2,10 @@
 
 Thanks for contributing to BuildIntel.
 
+## Collaboration Note
+
+This project is developed with support from `Claude` and `Codex` for implementation, iteration, debugging, and QA workflows.
+
 ## Before You Start
 
 - Open an issue or start a discussion for significant changes before beginning implementation.
