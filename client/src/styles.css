@@ -44,9 +44,9 @@ body {
 }
 
 :root[data-theme="light"] .hero-panel {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  background: linear-gradient(160deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 8px 32px rgba(15, 23, 42, 0.05);
 }
 
 /* ─── Workspace shell ────────────────────────────────────── */
@@ -78,6 +78,16 @@ body {
   letter-spacing: 0.01em;
   transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
   white-space: nowrap;
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-btn,
+  .ghost-btn,
+  .app-input,
+  .sidebar-link {
+    transition: none;
+  }
 }
 
 .primary-btn {
@@ -144,6 +154,12 @@ body {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
+/* Explicit colors for native <select> — required for Windows dark mode */
+select.app-input {
+  background-color: #080e1a;
+  color: #f1f5f9;
+}
+
 .app-input::placeholder {
   color: #475569;
 }
@@ -172,6 +188,11 @@ body {
   color: #0f172a;
 }
 
+:root[data-theme="light"] select.app-input {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 :root[data-theme="light"] .app-input::placeholder {
   color: #94a3b8;
 }
@@ -197,11 +218,13 @@ body {
 .sidebar-title {
   color: #f8fafc;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .hero-title {
   color: #ffffff;
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .section-copy,
@@ -214,6 +237,7 @@ body {
 .surface-title {
   color: #f1f5f9;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .surface-copy {
@@ -237,6 +261,7 @@ body {
   color: #f8fafc;
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .hero-copy {
@@ -282,7 +307,24 @@ body {
 }
 
 :root[data-theme="light"] .hero-copy {
-  color: #cbd5e1;
+  color: #475569;
+}
+
+/* ─── Metric cards inside dark hero panel (dark mode only) ── */
+
+.hero-panel .metric-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.hero-panel .metric-label,
+.hero-panel .metric-note {
+  color: rgba(186, 230, 253, 0.7);
+}
+
+.hero-panel .metric-value {
+  color: #ffffff;
 }
 
 /* ─── Surface cards ──────────────────────────────────────── */
@@ -302,15 +344,40 @@ body {
 
 :root[data-theme="light"] .sidebar-panel,
 :root[data-theme="light"] .metric-card {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Metric cards nested inside panels need a tinted bg so they stand out */
+:root[data-theme="light"] .dashboard-shell .metric-card,
+:root[data-theme="light"] .surface-card .metric-card {
+  background: #f8fafc;
+  box-shadow: none;
+}
+
+/* Hero panel metric cards in light mode — use standard surface styling */
+:root[data-theme="light"] .hero-panel .metric-card {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme="light"] .hero-panel .metric-label,
+:root[data-theme="light"] .hero-panel .metric-note {
+  color: #64748b;
+}
+
+:root[data-theme="light"] .hero-panel .metric-value {
+  color: #0f172a;
 }
 
 :root[data-theme="light"] .surface-card,
 :root[data-theme="light"] .table-shell,
 :root[data-theme="light"] .empty-state {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 /* ─── Accent / highlight ─────────────────────────────────── */
@@ -347,6 +414,7 @@ body {
 .accent-value {
   color: #ffffff;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .accent-copy {
@@ -450,15 +518,15 @@ body {
 
 :root[data-theme="light"] .sidebar-link-hover:hover {
   border-color: transparent;
-  background: rgba(15, 23, 42, 0.05);
-  color: #1e293b;
+  background: rgba(15, 23, 42, 0.07);
+  color: #0f172a;
 }
 
 :root[data-theme="light"] .sidebar-link-active {
   border-color: transparent;
-  background: rgba(14, 165, 233, 0.1);
+  background: rgba(2, 132, 199, 0.1);
   color: #0369a1;
-  box-shadow: inset 3px 0 0 rgba(14, 165, 233, 0.8);
+  box-shadow: inset 3px 0 0 #0284c7;
 }
 
 /* ─── Layout dividers ────────────────────────────────────── */
@@ -475,6 +543,7 @@ body {
   background: rgba(4, 7, 18, 0.85);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  overscroll-behavior: contain;
 }
 
 :root[data-theme="light"] .mobile-overlay {
