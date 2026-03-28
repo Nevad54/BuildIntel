@@ -8,3 +8,12 @@ server/data/runtime.json
 server/uploads
 playwright-report
 test-results
+
+# 3-layer architecture
+.tmp/
+credentials.json
+token.json
+.claude/
+.playwright-mcp/
+.mcp.json
+CLAUDE.md
