@@ -151,6 +151,7 @@ See [CREDITS.md](/d:/Web%20App/BuildIntel/CREDITS.md) for project credit details
 - Profit optimization simulator for overhead, profit, and contingency adjustments
 - Material intelligence database and subscription plan dashboard
 - PDF proposal export endpoint for estimate handoff
+- Lightweight demo documents in [docs/samples](docs/samples/README.md) so the repo stays showcase-ready without committing oversized raw plans
 - PostgreSQL-ready schema at [server/db/schema.sql](/d:/Web%20App/BuildIntel/server/db/schema.sql)
 
 ## Stack
