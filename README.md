@@ -1,6 +1,57 @@
 # BuildIntel
 
+AI construction estimating for faster takeoffs, sharper pricing, and more confident bids.
+
+![React](https://img.shields.io/badge/React-Vite%20Frontend-61DAFB?logo=react&logoColor=222)
+![Node.js](https://img.shields.io/badge/Node.js-Express%20API-339933?logo=node.js&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)
+![AI](https://img.shields.io/badge/AI-Estimate%20Workflow-2563eb)
+
 AI construction estimating and costing platform, built on a reusable estimating core for future vertical expansion.
+
+## At A Glance
+
+- turns construction estimating into a structured digital workflow
+- combines blueprint analysis, pricing logic, proposal generation, and workspace management
+- built to feel like a usable preconstruction product, not just a calculator demo
+- positioned for real contractor workflows with room for multi-vertical expansion
+
+## Why This Project Stands Out
+
+BuildIntel is positioned as more than a simple estimator demo. It presents a believable construction workflow where blueprint analysis, pricing logic, estimate generation, supplier comparison, and proposal export live in one product story.
+
+That makes the repo attractive for:
+
+- contractors and operations teams looking for faster preconstruction workflows
+- founders or stakeholders evaluating vertical AI product potential
+- recruiters and collaborators who want to see real product thinking, not just isolated UI screens
+
+## The Pitch
+
+BuildIntel helps contractors and estimators move from raw plans to clearer pricing decisions with less manual back-and-forth.
+
+Teams get:
+
+- faster estimate preparation
+- a more structured takeoff-to-proposal workflow
+- clearer visibility into labor, material, equipment, and margin assumptions
+- a stronger digital foundation for repeatable bidding operations
+
+## Demo Flow
+
+1. A user uploads project or blueprint-related inputs.
+2. The platform extracts relevant context and generates estimate-ready structure.
+3. Pricing logic and estimate composition turn that data into a usable costing workflow.
+4. Teams review suppliers, margins, and proposal outputs inside the same product story.
+5. The estimate can be refined and exported for handoff.
+
+That flow makes BuildIntel feel like a real preconstruction platform rather than a narrow AI feature.
+
+## Repository Standards
+
+- License: [LICENSE](/d:/Web%20App/BuildIntel/LICENSE)
+- Security policy: [SECURITY.md](/d:/Web%20App/BuildIntel/SECURITY.md)
+- Contribution guide: [CONTRIBUTING.md](/d:/Web%20App/BuildIntel/CONTRIBUTING.md)
 
 ## Positioning
 
@@ -16,6 +67,30 @@ Internal product strategy:
 - universal estimating engine
 - construction as the first vertical pack
 - future expansion into service, fabrication, maintenance, and specialty trades
+
+## Business Value
+
+- shortens the path from plan review to estimate creation
+- reduces scattered spreadsheet-style estimating work
+- creates a more professional digital workflow for small construction teams
+- supports better pricing consistency and proposal readiness
+- provides a strong product base for AI-assisted estimating expansion
+
+## Why It Wins
+
+- grounded in a real construction use case instead of generic AI positioning
+- connects estimation logic with workflow and delivery, not just output generation
+- useful for both product evaluation and portfolio storytelling
+- strong foundation for future vertical packs and more advanced cost intelligence
+
+## Portfolio Value
+
+BuildIntel is a strong portfolio piece because it shows:
+
+- vertical SaaS thinking tied to a credible industry workflow
+- practical AI integration inside an end-to-end product
+- full-stack delivery across frontend, backend, storage, and export flows
+- business framing that goes beyond technical implementation alone
 
 ## What is included
 
