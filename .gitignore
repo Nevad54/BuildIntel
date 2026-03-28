@@ -26,3 +26,9 @@ test-doc.txt
 screenshots/*.png
 !screenshots/pages/
 !screenshots/pages/*.png
+
+# Local plan-analysis scratch tooling
+check-dxf.cjs
+execution/
+make-drawing-pdf.mjs
+make-mep-pdf.mjs
