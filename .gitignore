@@ -20,3 +20,9 @@ CLAUDE.md
 drawing-plan.pdf
 mep-plan.pdf
 estimates-snapshot.md
+test-doc.txt
+
+# Local screenshot scratch area
+screenshots/*.png
+!screenshots/pages/
+!screenshots/pages/*.png
