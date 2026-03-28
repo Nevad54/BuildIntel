@@ -47,6 +47,31 @@ Teams get:
 
 That flow makes BuildIntel feel like a real preconstruction platform rather than a narrow AI feature.
 
+## Screenshots
+
+### Workspace Overview
+
+![BuildIntel dashboard](screenshots/pages/dashboard.png)
+
+### Estimate Workflow
+
+![BuildIntel estimates page](screenshots/pages/estimates.png)
+
+### Document Intelligence
+
+![BuildIntel documents page](screenshots/pages/documents.png)
+
+### Pricing Research
+
+![BuildIntel pricing page](screenshots/pages/pricing.png)
+
+## Quality Signals
+
+- full app build passes locally
+- server integration test suite passes locally
+- local npm audit is clean at the repo root
+- repo includes GitHub issue templates, PR template, license, security policy, and contribution guide
+
 ## Repository Standards
 
 - License: [LICENSE](/d:/Web%20App/BuildIntel/LICENSE)
