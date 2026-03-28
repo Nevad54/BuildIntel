@@ -117,6 +117,10 @@ BuildIntel is a strong portfolio piece because it shows:
 - full-stack delivery across frontend, backend, storage, and export flows
 - business framing that goes beyond technical implementation alone
 
+## Contributors
+
+This project is developed with support from `Claude` and `Codex` for implementation, iteration, debugging, and QA workflows.
+
 ## What is included
 
 - Multi-tenant company workspace with `Admin`, `Estimator`, and `Viewer` roles in the data model
