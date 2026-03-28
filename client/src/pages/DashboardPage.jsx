@@ -1,15 +1,16 @@
-import { Link } from "react-router-dom";
 import { formatCurrency, number } from "../lib/app.js";
-import { Banner, EmptyState, Field, MetricCard, SectionCard } from "../components/ui.jsx";
+import { ActionMenu, Banner, EmptyState, Field, MetricCard, QuickLink, SectionCard } from "../components/ui.jsx";
 
-function QuickLink({ to, label, note, tone = "ghost" }) {
-  const className = tone === "primary" ? "primary-btn inline-flex items-center justify-center" : "ghost-btn inline-flex items-center justify-center";
-  return (
-    <Link className={className} to={to}>
-      <span>{label}</span>
-      {note ? <span className="ml-2 text-xs opacity-80">{note}</span> : null}
-    </Link>
-  );
+function formatRelative(isoString) {
+  if (!isoString) return "";
+  const diff = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function ProjectPulse({ currentProject, latestEstimate, currencyCode }) {
@@ -24,21 +25,25 @@ function ProjectPulse({ currentProject, latestEstimate, currencyCode }) {
   }
 
   return (
-    <div className="surface-card grid gap-5 rounded-[24px] p-5 lg:grid-cols-[1.2fr_0.8fr]">
+    <div className="surface-card grid gap-5 rounded-3xl p-5 lg:grid-cols-[1.2fr_0.8fr]">
       <div>
         <p className="section-eyebrow text-xs uppercase tracking-[0.24em]">Current Project</p>
         <h3 className="surface-title mt-2 text-2xl font-semibold">{currentProject.name}</h3>
         <p className="surface-copy mt-2 text-sm">
-          {currentProject.location} / {number.format(currentProject.areaSqm)} sqm / {currentProject.status}
+          {[currentProject.location, currentProject.areaSqm ? `${number.format(currentProject.areaSqm)} sqm` : null, currentProject.status].filter(Boolean).join(" / ")}
         </p>
         <p className="surface-copy mt-4 text-sm leading-6">{currentProject.description}</p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <QuickLink to="/documents" label="Review Documents" tone="primary" />
-          <QuickLink to="/estimates" label="Open Estimate Workspace" />
+        <div className="mt-5">
+          <ActionMenu
+            items={[
+              { label: "Review Documents", to: "/documents" },
+              { label: "Open Estimate Workspace", to: "/estimates" }
+            ]}
+          />
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-        <MetricCard label="Blueprint Area" value={`${number.format(currentProject.areaSqm)} sqm`} />
+        <MetricCard label="Blueprint Area" value={currentProject.areaSqm ? `${number.format(currentProject.areaSqm)} sqm` : "—"} />
         <MetricCard
           label="Latest Estimate"
           value={latestEstimate ? formatCurrency(latestEstimate.finalContractPrice || 0, currencyCode, latestEstimate.location || currentProject.location) : "No estimate"}
@@ -50,75 +55,35 @@ function ProjectPulse({ currentProject, latestEstimate, currencyCode }) {
   );
 }
 
-function ActionChecklist({ hasProject, hasDocument, hasEstimate }) {
-  const steps = [
-    {
-      title: "Project intake",
-      done: hasProject,
-      to: "/projects",
-      action: hasProject ? "Review projects" : "Create first project",
-      description: "Capture location, scope, and area so the rest of the workflow has context."
-    },
-    {
-      title: "Document review",
-      done: hasDocument,
-      to: "/documents",
-      action: hasDocument ? "Open review queue" : "Upload first document",
-      description: "Attach plans or scope sheets and confirm the extracted dimensions."
-    },
-    {
-      title: "Estimate draft",
-      done: hasEstimate,
-      to: "/estimates",
-      action: hasEstimate ? "Open saved estimate" : "Generate estimate",
-      description: "Turn the project context into a priced estimate you can edit and export."
-    }
-  ];
-
-  return (
-    <div className="space-y-3">
-      {steps.map((step) => (
-        <div key={step.title} className="surface-card flex flex-wrap items-start justify-between gap-4 rounded-[20px] p-4">
-          <div className="max-w-xl">
-            <p className="surface-title text-sm font-semibold">{step.title}</p>
-            <p className="surface-copy mt-1 text-sm leading-6">{step.description}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="surface-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
-              {step.done ? "Done" : "Next"}
-            </span>
-            <QuickLink to={step.to} label={step.action} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function RecentActivity({ projects, documents, estimates, currencyCode }) {
   const items = [
-    ...projects.slice(0, 2).map((project) => ({
-      id: `project-${project.id}`,
-      title: project.name,
-      meta: `${project.location} / ${project.status}`,
-      detail: "Project updated in the pipeline",
+    ...projects.slice(0, 2).map((p) => ({
+      id: `project-${p.id}`,
+      title: p.name,
+      meta: `${p.location} · ${p.status}`,
+      detail: p.description,
+      ts: p.createdAt,
       to: "/projects"
     })),
-    ...documents.slice(0, 2).map((document) => ({
-      id: `document-${document.id}`,
-      title: document.filename,
-      meta: document.reviewStatus,
-      detail: document.extractionSummary,
+    ...documents.slice(0, 2).map((d) => ({
+      id: `document-${d.id}`,
+      title: d.filename,
+      meta: d.reviewStatus,
+      detail: d.extractionSummary,
+      ts: d.createdAt,
       to: "/documents"
     })),
-    ...estimates.slice(0, 2).map((estimate) => ({
-      id: `estimate-${estimate.id}`,
-      title: formatCurrency(estimate.finalContractPrice || 0, currencyCode, estimate.location),
-      meta: "Estimate saved",
-      detail: estimate.prompt,
+    ...estimates.slice(0, 2).map((e) => ({
+      id: `estimate-${e.id}`,
+      title: formatCurrency(e.finalContractPrice || 0, currencyCode, e.location),
+      meta: "Estimate",
+      detail: e.prompt,
+      ts: e.createdAt,
       to: "/estimates"
     }))
-  ].slice(0, 5);
+  ]
+    .sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0))
+    .slice(0, 5);
 
   if (!items.length) {
     return (
@@ -132,12 +97,15 @@ function RecentActivity({ projects, documents, estimates, currencyCode }) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="surface-card rounded-[18px] p-4">
+        <div key={item.id} className="surface-card rounded-2xl p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-2xl">
-              <p className="surface-title text-sm font-semibold">{item.title}</p>
-              <p className="surface-meta mt-1 text-xs uppercase tracking-[0.2em]">{item.meta}</p>
-              <p className="surface-copy mt-3 text-sm leading-6">{item.detail}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="surface-title text-sm font-semibold">{item.title}</p>
+                <span className="surface-pill rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.18em]">{item.meta}</span>
+                {item.ts ? <span className="surface-meta text-[11px]">{formatRelative(item.ts)}</span> : null}
+              </div>
+              <p className="surface-copy mt-2 line-clamp-2 text-sm leading-6">{item.detail}</p>
             </div>
             <QuickLink to={item.to} label="Open" />
           </div>
@@ -151,7 +119,7 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
   const latestEstimate = data.estimates[0];
   const currentProject = data.currentProject;
   const totalOpenAlerts = (data.alerts || []).length;
-  const estimatingCount = data.projects.filter((project) => project.status === "Estimating").length;
+  const estimatingCount = data.projects.filter((p) => p.status === "Estimating").length;
   const canManageProjects = ["Admin", "Estimator"].includes(data.user?.role);
 
   return (
@@ -163,11 +131,13 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
         title="BuildIntel Workspace"
         eyebrow="Overview"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <QuickLink to="/projects" label="Projects" />
-            <QuickLink to="/estimates" label="Estimates" />
-            <QuickLink to="/documents" label="Documents" />
-          </div>
+          <ActionMenu
+            items={[
+              { label: "Projects", to: "/projects" },
+              { label: "Estimates", to: "/estimates" },
+              { label: "Documents", to: "/documents" }
+            ]}
+          />
         }
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -178,9 +148,55 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
         </div>
       </SectionCard>
 
-      <SectionCard title="Project Pulse" eyebrow="Focus">
-        <ProjectPulse currentProject={currentProject} latestEstimate={latestEstimate} currencyCode={currencyCode} />
-      </SectionCard>
+      {!data.projects.length || !data.currentProject?.location ? (
+        <SectionCard title="Get Started" eyebrow="Welcome">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                step: "1",
+                title: "Create a project",
+                description: "Add a project with location and floor area. This anchors everything — documents, estimates, and pricing all attach to it.",
+                to: "/projects",
+                label: "Add Project",
+                tone: "primary"
+              },
+              {
+                step: "2",
+                title: "Upload a document",
+                description: "Attach a scope sheet, floor plan, or any text file. AI extracts dimensions and structural elements so you don't have to key them manually.",
+                to: "/documents",
+                label: "Upload Document",
+                tone: "ghost"
+              },
+              {
+                step: "3",
+                title: "Generate an estimate",
+                description: "Write a brief prompt or use your uploaded document. AI produces a full line-item BOQ with materials, labor, and equipment in seconds.",
+                to: "/estimates",
+                label: "Generate Estimate",
+                tone: "ghost"
+              }
+            ].map((item) => (
+              <div key={item.step} className="surface-card rounded-2xl p-5">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/10 text-xs font-bold text-sky-300">{item.step}</span>
+                  <div>
+                    <p className="surface-title text-sm font-semibold">{item.title}</p>
+                    <p className="surface-copy mt-2 text-xs leading-5">{item.description}</p>
+                    <div className="mt-4">
+                      <QuickLink to={item.to} label={item.label} tone={item.tone} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      ) : (
+        <SectionCard title="Project Pulse" eyebrow="Focus">
+          <ProjectPulse currentProject={currentProject} latestEstimate={latestEstimate} currencyCode={currencyCode} />
+        </SectionCard>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <SectionCard title="Quick Project Intake" eyebrow="Start Here">
@@ -189,13 +205,13 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
               <Field
                 label="Project Name"
                 value={projectForm.name}
-                onChange={(event) => setProjectForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, name: e.target.value }))}
                 placeholder="Two-storey residence, fit-out, warehouse shell"
               />
               <Field
                 label="Location"
                 value={projectForm.location}
-                onChange={(event) => setProjectForm((current) => ({ ...current, location: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, location: e.target.value }))}
                 placeholder="Quezon City, Pasig, Makati"
               />
               <Field
@@ -203,7 +219,7 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
                 type="number"
                 min="1"
                 value={projectForm.areaSqm}
-                onChange={(event) => setProjectForm((current) => ({ ...current, areaSqm: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, areaSqm: e.target.value }))}
               />
               <div className="md:col-span-2">
                 <Field
@@ -212,7 +228,7 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
                   rows={4}
                   value={projectForm.description}
                   placeholder="Describe the scope, building type, and anything that will matter for estimating."
-                  onChange={(event) => setProjectForm((current) => ({ ...current, description: event.target.value }))}
+                  onChange={(e) => setProjectForm((c) => ({ ...c, description: e.target.value }))}
                 />
               </div>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
@@ -231,53 +247,45 @@ export function DashboardPage({ data, projectForm, setProjectForm, onCreateProje
           )}
         </SectionCard>
 
-        <SectionCard title="What Needs Attention" eyebrow="Signals">
-          <div className="space-y-3">
-            {(data.alerts || []).length ? (
-              data.alerts.map((alert) => (
-                <div key={alert.id} className="surface-card rounded-2xl p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="max-w-xl">
+        <div className="space-y-6">
+          <SectionCard title="Active Alerts" eyebrow="Signals">
+            <div className="space-y-3">
+              {(data.alerts || []).length ? (
+                data.alerts.map((alert) => (
+                  <div key={alert.id} className="surface-card rounded-xl p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <p className="surface-title text-sm font-semibold">{alert.title}</p>
+                      <span className="surface-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">{alert.severity}</span>
                     </div>
-                    <span className="surface-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
-                      {alert.severity}
-                    </span>
                   </div>
-                </div>
-              ))
-            ) : (
-              <Banner>No active alerts right now.</Banner>
-            )}
-          </div>
+                ))
+              ) : (
+                <Banner>No active alerts right now.</Banner>
+              )}
+            </div>
+          </SectionCard>
+
           {latestEstimate ? (
-            <div className="accent-card mt-6 rounded-[24px] p-5">
+            <div className="accent-card rounded-3xl p-5">
               <p className="accent-eyebrow text-xs uppercase tracking-[0.24em]">Latest Estimate</p>
               <p className="accent-value mt-3 text-2xl font-semibold">{formatCurrency(latestEstimate.finalContractPrice, currencyCode, latestEstimate.location || currentProject?.location)}</p>
-              <p className="accent-copy mt-2 text-sm">{latestEstimate.prompt}</p>
+              <p className="accent-copy mt-2 text-sm line-clamp-2">{latestEstimate.prompt}</p>
+              <div className="mt-4">
+                <QuickLink to="/estimates" label="Open Workspace" />
+              </div>
             </div>
           ) : null}
-        </SectionCard>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <SectionCard title="Next Best Actions" eyebrow="Checklist">
-          <ActionChecklist
-            hasProject={Boolean(data.projects.length)}
-            hasDocument={Boolean(data.documents.length)}
-            hasEstimate={Boolean(data.estimates.length)}
-          />
-        </SectionCard>
-
-        <SectionCard title="Recent Activity" eyebrow="Momentum">
-          <RecentActivity
-            projects={data.projects}
-            documents={data.documents}
-            estimates={data.estimates}
-            currencyCode={currencyCode}
-          />
-        </SectionCard>
-      </div>
+      <SectionCard title="Recent Activity" eyebrow="Momentum">
+        <RecentActivity
+          projects={data.projects}
+          documents={data.documents}
+          estimates={data.estimates}
+          currencyCode={currencyCode}
+        />
+      </SectionCard>
     </div>
   );
 }

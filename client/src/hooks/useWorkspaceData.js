@@ -18,7 +18,11 @@ import { workspaceApi } from "../lib/workspaceApi.js";
 const withEstimateRowIds = (items = []) =>
   items.map((item) => ({
     ...item,
-    _rowId: item._rowId || createClientId("estimate-row")
+    _rowId: item._rowId || createClientId("estimate-row"),
+    remarks: item.remarks || "",
+    payItem: item.payItem || "",
+    locked: item.locked || false,
+    qtoFormula: item.qtoFormula || ""
   }));
 
 export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlobalNotice }) {
@@ -64,6 +68,11 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
   const [planBusy, setPlanBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [accountBusy, setAccountBusy] = useState(false);
+  const [docBusy, setDocBusy] = useState(false);
+  const [refineBusy, setRefineBusy] = useState(false);
+  const [bulkRepriceBusy, setBulkRepriceBusy] = useState(false);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
+  const [snapshots, setSnapshots] = useState([]);
   const user = workspace?.user;
 
   const loadWorkspace = async (activeToken = token) => {
@@ -77,6 +86,7 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
       setWorkspace(bootstrap);
       setCurrentProjectId((current) => current || bootstrap.projects?.[0]?.id || "");
       setSelectedEstimateId((current) => current || bootstrap.estimates?.[0]?.id || "");
+      setDocumentForm((current) => current.projectId ? current : { ...current, projectId: bootstrap.projects?.[0]?.id || "" });
       if (bootstrap.projects?.[0]?.id) {
         setDocumentForm((current) => ({ ...current, projectId: current.projectId || bootstrap.projects[0].id }));
         setEstimateForm((current) => ({ ...current, projectId: current.projectId || bootstrap.projects[0].id }));
@@ -208,6 +218,31 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     });
   };
 
+  const onDeleteProject = async (projectId) => {
+    await withAction(setUpdateBusy, async () => {
+      await workspaceApi.deleteProject(token, projectId);
+      if (currentProjectId === projectId) {
+        setCurrentProjectId("");
+      }
+      await loadWorkspace();
+    }, "Project deleted.");
+  };
+
+  const onDeleteDocument = async (documentId) => {
+    await withAction(setUpdateBusy, async () => {
+      await workspaceApi.deleteDocument(token, documentId);
+      await loadWorkspace();
+    }, "Document deleted.");
+  };
+
+  const onDeleteEstimate = async (estimateId) => {
+    await withAction(setUpdateBusy, async () => {
+      await workspaceApi.deleteEstimate(token, estimateId);
+      setSelectedEstimateId("");
+      await loadWorkspace();
+    }, "Estimate deleted.");
+  };
+
   const onCreateTemplate = async (event) => {
     event.preventDefault();
     await withAction(setTemplateBusy, async () => {
@@ -234,6 +269,13 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     return createdMaterial;
   };
 
+  const onUpdateMaterial = async (materialId, payload) => {
+    await withAction(setMaterialBusy, async () => {
+      await workspaceApi.updateMaterial(token, materialId, payload);
+      await loadWorkspace();
+    }, "Price updated.");
+  };
+
   const onCreateMaterial = async (event) => {
     event.preventDefault();
     await createMaterialRecord({
@@ -255,10 +297,30 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
       "Material added to catalog."
     );
 
+  const onGenerateFromDocument = async (payload) => {
+    if (docBusy) return; // prevent duplicate submissions
+    await withAction(setDocBusy, async () => {
+      const estimate = await workspaceApi.generateEstimate(token, payload);
+      await loadWorkspace();
+      setSelectedEstimateId(estimate.id);
+      setLastGeneratedEstimateId(estimate.id);
+    }, "Document analyzed. Estimate created.");
+  };
+
   const onGenerateEstimate = async (event) => {
     event.preventDefault();
+    if (generateBusy) return; // prevent duplicate submissions
     await withAction(setGenerateBusy, async () => {
       const estimate = await workspaceApi.generateEstimate(token, estimateForm);
+      await loadWorkspace();
+      setSelectedEstimateId(estimate.id);
+      setLastGeneratedEstimateId(estimate.id);
+    }, "Estimate generated.");
+  };
+
+  const onGenerateWithPrompt = async (prompt) => {
+    await withAction(setGenerateBusy, async () => {
+      const estimate = await workspaceApi.generateEstimate(token, { ...estimateForm, prompt });
       await loadWorkspace();
       setSelectedEstimateId(estimate.id);
       setLastGeneratedEstimateId(estimate.id);
@@ -301,21 +363,38 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     });
   };
 
-  const onPatchEstimate = async (exportPdf) => {
+  const onPatchEstimate = async (exportType) => {
     const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
-    if (!estimate) {
-      return;
-    }
+    if (!estimate) return;
 
-    if (exportPdf) {
+    if (exportType === true || exportType === "pdf") {
       setExportBusy(true);
       setGlobalError("");
       try {
-        const blob = await workspaceApi.exportEstimatePdf(token, estimate.id);
+        const { blob, filename } = await workspaceApi.exportEstimatePdf(token, estimate.id);
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = "estimate.pdf";
+        anchor.download = filename;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        setGlobalError(error.message);
+      } finally {
+        setExportBusy(false);
+      }
+      return;
+    }
+
+    if (exportType === "csv") {
+      setExportBusy(true);
+      setGlobalError("");
+      try {
+        const { blob, filename } = await workspaceApi.exportEstimateCsv(token, estimate.id);
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
         anchor.click();
         window.URL.revokeObjectURL(url);
       } catch (error) {
@@ -340,7 +419,11 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
           quantity: Number(item.quantity),
           unit: item.unit,
           unitPrice: Number(item.unitPrice),
-          category: item.category
+          category: item.category,
+          remarks: item.remarks || "",
+          payItem: item.payItem || "",
+          locked: item.locked || false,
+          qtoFormula: item.qtoFormula || ""
         }))
       });
       await loadWorkspace();
@@ -393,19 +476,52 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
 
   const onUploadDocument = async (event) => {
     event.preventDefault();
-    if (!documentForm.file || !documentForm.projectId) {
-      setGlobalError("Choose a project and file before uploading.");
+    const hasFiles = documentForm.files?.length > 0 || documentForm.file;
+    if (!hasFiles) {
+      setGlobalError("Choose a file before uploading.");
+      return;
+    }
+    if (!documentForm.projectId && !documentForm.newProjectName?.trim()) {
+      setGlobalError("Choose a project or enter a new project name.");
       return;
     }
 
     await withAction(setUploadBusy, async () => {
-      const contentBase64 = await toBase64(documentForm.file);
-      await workspaceApi.uploadDocument(token, documentForm.projectId, {
-        filename: documentForm.filename,
-        notes: documentForm.notes,
-        areaHint: Number(documentForm.areaHint),
-        contentBase64
-      });
+      // Auto-create project if none selected
+      let projectId = documentForm.projectId;
+      if (!projectId && documentForm.newProjectName?.trim()) {
+        const created = await workspaceApi.createProject(token, {
+          name: documentForm.newProjectName.trim(),
+          location: "Philippines",
+          areaSqm: documentForm.areaHint ? Number(documentForm.areaHint) : 0
+        });
+        projectId = created.id;
+      }
+
+      const files = documentForm.files?.length > 0 ? documentForm.files : [documentForm.file];
+      if (files.length === 1) {
+        // Single file — existing behaviour
+        const contentBase64 = await toBase64(files[0]);
+        await workspaceApi.uploadDocument(token, projectId, {
+          filename: documentForm.filename || files[0].name,
+          notes: documentForm.notes,
+          ...(documentForm.areaHint ? { areaHint: Number(documentForm.areaHint) } : {}),
+          docType: documentForm.docType || "architectural",
+          contentBase64
+        });
+      } else {
+        // Multiple files — encode all and send as array
+        const encoded = await Promise.all(files.map(toBase64));
+        const combinedName = files.map((f) => f.name).join(", ");
+        await workspaceApi.uploadDocument(token, projectId, {
+          filename: combinedName,
+          notes: documentForm.notes,
+          ...(documentForm.areaHint ? { areaHint: Number(documentForm.areaHint) } : {}),
+          docType: documentForm.docType || "architectural",
+          contentBase64: encoded,
+          filenames: files.map((f) => f.name)
+        });
+      }
       setDocumentForm((current) => ({ ...documentDefaults, projectId: current.projectId }));
       await loadWorkspace();
     }, "Document uploaded.");
@@ -425,15 +541,37 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     }
 
     await withAction(setReviewBusy, async () => {
+      const ex = nextDocument.extracted || {};
+      let extracted;
+      if (nextDocument.docType === "mep") {
+        extracted = {
+          pipes: ex.pipes || [],
+          fixtures: ex.fixtures || [],
+          valves: ex.valves || [],
+          equipment: ex.equipment || []
+        };
+      } else if (nextDocument.docType === "civil") {
+        extracted = {
+          lotCount: Number(ex.lotCount) || 0,
+          lotSizeSqm: Number(ex.lotSizeSqm) || 0,
+          roadLengthM: Number(ex.roadLengthM) || 0,
+          roadDetails: ex.roadDetails || [],
+          drainagePipes: ex.drainagePipes || [],
+          waterlinePipes: ex.waterlinePipes || [],
+          otherInfrastructure: ex.otherInfrastructure || []
+        };
+      } else {
+        extracted = {
+          roomDimensions: ex.roomDimensions || [],
+          wallLengths: Number(ex.wallLengths) || 0,
+          floorAreas: Number(ex.floorAreas) || 0,
+          structuralElements: ex.structuralElements || []
+        };
+      }
       await workspaceApi.reviewDocument(token, documentId, {
         extractionSummary: nextDocument.extractionSummary,
         reviewStatus: nextDocument.reviewStatus,
-        extracted: {
-          roomDimensions: nextDocument.extracted.roomDimensions,
-          wallLengths: Number(nextDocument.extracted.wallLengths),
-          floorAreas: Number(nextDocument.extracted.floorAreas),
-          structuralElements: nextDocument.extracted.structuralElements || []
-        }
+        extracted
       });
       await loadWorkspace();
     }, "Document review saved.");
@@ -444,6 +582,102 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     await withAction(() => {}, async () => {
       const result = await workspaceApi.researchPricing(token, researchForm);
       setPricingResult(result);
+    });
+  };
+
+  const onResearchPricingDirect = async (payload) => {
+    await withAction(() => {}, async () => {
+      const result = await workspaceApi.researchPricing(token, payload);
+      setPricingResult(result);
+    });
+  };
+
+  const onBulkReprice = async (materialKeyword, newUnitPrice) => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return null;
+    let result = null;
+    await withAction(setBulkRepriceBusy, async () => {
+      result = await workspaceApi.bulkReprice(token, estimate.id, { materialKeyword, newUnitPrice: Number(newUnitPrice) });
+      await loadWorkspace();
+    }, `Bulk reprice applied to ${result?.matchCount || 0} rows.`);
+    return result;
+  };
+
+  const onCreateSnapshot = async (label) => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return;
+    await withAction(setSnapshotBusy, async () => {
+      await workspaceApi.createSnapshot(token, estimate.id, label);
+      const payload = await workspaceApi.listSnapshots(token, estimate.id);
+      setSnapshots(payload.snapshots || []);
+    }, "Snapshot saved.");
+  };
+
+  const onCheckCompleteness = async () => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return null;
+    try {
+      return await workspaceApi.checkCompleteness(token, estimate.id);
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const onExportSummaryPdf = async () => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return;
+    setExportBusy(true);
+    setGlobalError("");
+    try {
+      const { blob, filename } = await workspaceApi.exportEstimateSummaryPdf(token, estimate.id);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setGlobalError(error.message);
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const onExportDpwhPdf = async () => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return;
+    setExportBusy(true);
+    setGlobalError("");
+    try {
+      const { blob, filename } = await workspaceApi.exportDpwhBoqPdf(token, estimate.id);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setGlobalError(error.message);
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const onLoadSnapshots = async () => {
+    const estimate = data?.estimates?.find((entry) => entry.id === selectedEstimateId);
+    if (!estimate) return;
+    try {
+      const payload = await workspaceApi.listSnapshots(token, estimate.id);
+      setSnapshots(payload.snapshots || []);
+    } catch (_) {
+      setSnapshots([]);
+    }
+  };
+
+  const onFindSuppliersDirect = async (payload) => {
+    await withAction(() => {}, async () => {
+      const result = await workspaceApi.findSuppliers(token, payload);
+      setSupplierResults(result.suppliers || []);
     });
   };
 
@@ -493,6 +727,7 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
     data,
     loadingWorkspace,
     auditLogs,
+    loadWorkspace,
     forms: {
       projectForm,
       setProjectForm,
@@ -528,7 +763,8 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
       pricingResult,
       supplierResults,
       lastGeneratedEstimateId,
-      marketRefreshResult
+      marketRefreshResult,
+      snapshots
     },
     busy: {
       createBusy,
@@ -545,11 +781,18 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
       importBusy,
       planBusy,
       exportBusy,
-      accountBusy
+      accountBusy,
+      docBusy,
+      refineBusy,
+      bulkRepriceBusy,
+      snapshotBusy
     },
     actions: {
       onCreateProject,
       onUpdateProject,
+      onDeleteProject,
+      onDeleteDocument,
+      onDeleteEstimate,
       onCreateTemplate,
       onCreateMaterial,
       onCreateMaterialInline,
@@ -568,7 +811,18 @@ export function useWorkspaceData({ token, onUnauthorized, setGlobalError, setGlo
       onImportPricing,
       onImportRemotePricing,
       onChangePlan,
-      onUpdateAccount
+      onUpdateAccount,
+      onGenerateFromDocument,
+      onGenerateWithPrompt,
+      onUpdateMaterial,
+      onResearchPricingDirect,
+      onFindSuppliersDirect,
+      onBulkReprice,
+      onCreateSnapshot,
+      onLoadSnapshots,
+      onCheckCompleteness,
+      onExportSummaryPdf,
+      onExportDpwhPdf
     }
   };
 }

@@ -225,6 +225,8 @@ const truncateOrder = [
 const normalizeSeedData = (source) => ({
   ...clone(source),
   promptTemplates: source.promptTemplates || [],
+  projectFiles: source.projectFiles || [],
+  estimateSnapshots: source.estimateSnapshots || [],
   users: source.users.map((user) => ({
     isActive: true,
     profileSettings: {},

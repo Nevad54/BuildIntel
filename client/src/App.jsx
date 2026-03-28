@@ -11,7 +11,7 @@ import { SettingsPage } from "./pages/SettingsPage.jsx";
 import { useWorkspaceApp } from "./hooks/useWorkspaceApp.js";
 
 export default function App() {
-  const { auth, app, data, forms, results, busy, actions, preferences } = useWorkspaceApp();
+  const { auth, app, data, loadWorkspace, forms, results, busy, actions, preferences } = useWorkspaceApp();
   const isAdmin = data?.user?.role === "Admin";
 
   if (!auth.token) {
@@ -51,6 +51,7 @@ export default function App() {
       currentProject={data.currentProject}
       currentProjectId={forms.currentProjectId}
       setCurrentProjectId={forms.setCurrentProjectId}
+      tokenUsage={data.tokenUsage}
     >
       <Routes>
           <Route
@@ -73,11 +74,13 @@ export default function App() {
             element={
               <ProjectsPage
                 data={data}
+                token={auth.token}
                 projectForm={forms.projectForm}
                 setProjectForm={forms.setProjectForm}
                 onCreateProject={actions.onCreateProject}
                 createBusy={busy.createBusy}
                 onUpdateProject={actions.onUpdateProject}
+                onDeleteProject={actions.onDeleteProject}
                 updateBusy={busy.updateBusy}
                 notice={app.notice}
                 error={app.error}
@@ -98,11 +101,10 @@ export default function App() {
                 marketRefreshResult={results.marketRefreshResult}
                 onSimulate={actions.onSimulate}
                 onGenerateEstimate={actions.onGenerateEstimate}
+                onGenerateWithPrompt={actions.onGenerateWithPrompt}
                 onRefreshEstimateMarketPrices={actions.onRefreshEstimateMarketPrices}
                 onUpdateEstimateStatus={actions.onUpdateEstimateStatus}
                 onCreatePromptTemplate={actions.onCreatePromptTemplate}
-                onUpdatePromptTemplate={actions.onUpdatePromptTemplate}
-                onDeletePromptTemplate={actions.onDeletePromptTemplate}
                 generateBusy={busy.generateBusy}
                 promptTemplateBusy={busy.promptTemplateBusy}
                 marketRefreshBusy={busy.marketRefreshBusy}
@@ -119,6 +121,20 @@ export default function App() {
                 notice={app.notice}
                 error={app.error}
                 currencyCode={app.settings.currencyCode}
+                token={auth.token}
+                onGenerateFromDocument={actions.onGenerateFromDocument}
+                docBusy={busy.docBusy}
+                onRefresh={loadWorkspace}
+                onDeleteEstimate={actions.onDeleteEstimate}
+                onBulkReprice={actions.onBulkReprice}
+                onCreateSnapshot={actions.onCreateSnapshot}
+                onLoadSnapshots={actions.onLoadSnapshots}
+                snapshots={results.snapshots}
+                bulkRepriceBusy={busy.bulkRepriceBusy}
+                snapshotBusy={busy.snapshotBusy}
+                onCheckCompleteness={actions.onCheckCompleteness}
+                onExportSummaryPdf={actions.onExportSummaryPdf}
+                onExportDpwhPdf={actions.onExportDpwhPdf}
               />
             }
           />
@@ -132,9 +148,12 @@ export default function App() {
                 onUploadDocument={actions.onUploadDocument}
                 uploadBusy={busy.uploadBusy}
                 onReviewDocument={actions.onReviewDocument}
+                onDeleteDocument={actions.onDeleteDocument}
                 reviewBusy={busy.reviewBusy}
                 notice={app.notice}
                 error={app.error}
+                onGenerateFromDocument={actions.onGenerateFromDocument}
+                generateBusy={busy.generateBusy}
               />
             }
           />
@@ -146,15 +165,19 @@ export default function App() {
                 materialForm={forms.materialForm}
                 setMaterialForm={forms.setMaterialForm}
                 onCreateMaterial={actions.onCreateMaterial}
+                onUpdateMaterial={actions.onUpdateMaterial}
+                onCreateMaterialInline={actions.onCreateMaterialInline}
                 materialBusy={busy.materialBusy}
                 researchForm={forms.researchForm}
                 setResearchForm={forms.setResearchForm}
                 pricingResult={results.pricingResult}
                 onResearchPricing={actions.onResearchPricing}
+                onResearchPricingDirect={actions.onResearchPricingDirect}
                 supplierForm={forms.supplierForm}
                 setSupplierForm={forms.setSupplierForm}
                 supplierResults={results.supplierResults}
                 onFindSuppliers={actions.onFindSuppliers}
+                onFindSuppliersDirect={actions.onFindSuppliersDirect}
                 pricingImportForm={forms.pricingImportForm}
                 setPricingImportForm={forms.setPricingImportForm}
                 remoteImportForm={forms.remoteImportForm}

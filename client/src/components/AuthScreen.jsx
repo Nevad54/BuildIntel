@@ -19,7 +19,7 @@ export function AuthScreen({
     <main className="workspace-root min-h-screen px-4 py-10">
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hero-panel rounded-[36px] p-8 lg:p-10">
-          <p className="text-xs uppercase tracking-[0.3em] text-amber-200/80">Construction estimating workspace</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-sky-300/80">Construction estimating workspace</p>
           <h1 className="hero-title mt-5 max-w-xl text-4xl font-semibold leading-tight lg:text-6xl">
             BuildIntel keeps the estimating flow clear from first document to final proposal.
           </h1>
@@ -42,7 +42,7 @@ export function AuthScreen({
                 onClick={() => setMode(entry)}
                 className={cls(
                   "flex-1 rounded-full px-4 py-2 text-sm font-medium transition",
-                  mode === entry ? "bg-amber-300 text-slate-950" : "surface-copy"
+                  mode === entry ? "bg-sky-400 text-slate-950" : "surface-copy"
                 )}
               >
                 {entry === "login" ? "Sign In" : entry === "register" ? "Create Account" : "Reset Password"}

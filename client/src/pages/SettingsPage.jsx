@@ -67,7 +67,7 @@ export function SettingsPage({
               <label className="app-label block text-sm">
                 <span>Currency</span>
                 <select
-                  className="app-input mt-2 w-full rounded-2xl px-4 py-3"
+                  className="app-input mt-1.5 w-full px-3 py-2"
                   value={settings.currencyCode}
                   onChange={(event) => onSaveSettings({ currencyCode: event.target.value })}
                 >
@@ -81,7 +81,7 @@ export function SettingsPage({
               <label className="app-label block text-sm">
                 <span>Appearance</span>
                 <select
-                  className="app-input mt-2 w-full rounded-2xl px-4 py-3"
+                  className="app-input mt-1.5 w-full px-3 py-2"
                   value={settings.themeMode}
                   onChange={(event) => onSaveSettings({ themeMode: event.target.value })}
                 >
@@ -156,7 +156,7 @@ export function SettingsPage({
                 <h3 className="surface-title mt-3 text-xl font-semibold">{data.currentProject?.name || "No project selected"}</h3>
                 <p className="surface-copy mt-2 text-sm leading-6">
                   {data.currentProject
-                    ? `${data.currentProject.location} / ${data.currentProject.areaSqm} sqm / ${data.currentProject.status}`
+                    ? [data.currentProject.location, data.currentProject.areaSqm ? `${data.currentProject.areaSqm} sqm` : null, data.currentProject.status].filter(Boolean).join(" / ")
                     : "Choose a current project from the sidebar to keep documents and estimates aligned."}
                 </p>
               </div>

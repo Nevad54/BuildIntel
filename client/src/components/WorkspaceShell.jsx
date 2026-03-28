@@ -10,34 +10,56 @@ function SidebarLink({ to, label, description, onClick }) {
       onClick={onClick}
       className={({ isActive }) =>
         cls(
-          "sidebar-link block rounded-[20px] border px-4 py-3 transition",
+          "sidebar-link block border px-3 py-2.5 transition",
           isActive ? "sidebar-link-active" : "sidebar-link-idle sidebar-link-hover"
         )
       }
     >
-      <p className="text-sm font-semibold">{label}</p>
-      <p className="sidebar-copy mt-1 text-xs">{description}</p>
+      <p className="text-sm font-medium">{label}</p>
+      <p className="sidebar-copy mt-0.5 text-xs">{description}</p>
     </NavLink>
+  );
+}
+
+function TokenTracker({ tokenUsage }) {
+  if (!tokenUsage) return null;
+  const { totalTokens, requests, rateLimitHits } = tokenUsage;
+  const hasActivity = requests > 0 || rateLimitHits > 0;
+  return (
+    <div className="token-tracker-divider mt-2 pt-2 border-t border-dashed">
+      <p className="sidebar-eyebrow text-[10px]">AI Usage</p>
+      {hasActivity ? (
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span className="sidebar-copy text-xs">{totalTokens.toLocaleString()} tokens</span>
+          <span className="sidebar-status text-[10px]">{requests} req</span>
+          {rateLimitHits > 0 && (
+            <span className="text-amber-400 text-[10px]">{rateLimitHits} rate limit</span>
+          )}
+        </div>
+      ) : (
+        <p className="sidebar-copy text-[10px] mt-0.5">No AI calls yet</p>
+      )}
+    </div>
   );
 }
 
 function ProjectContextCard({ projects, currentProject, currentProjectId, setCurrentProjectId, compact = false }) {
   if (!projects.length) {
     return (
-      <div className={cls("sidebar-panel rounded-[24px] border", compact ? "p-4" : "p-5")}>
-        <p className="sidebar-eyebrow text-xs uppercase tracking-[0.24em]">Current project</p>
-        <p className="sidebar-copy mt-3 text-sm">No project selected yet.</p>
+      <div className={cls("sidebar-panel rounded-lg border", compact ? "p-3" : "p-4")}>
+        <p className="sidebar-eyebrow">Current project</p>
+        <p className="sidebar-copy mt-2 text-sm">No project selected yet.</p>
       </div>
     );
   }
 
   return (
-    <div className={cls("sidebar-panel rounded-[24px] border", compact ? "p-4" : "p-5")}>
-      <p className="sidebar-eyebrow text-xs uppercase tracking-[0.24em]">Current project</p>
-      <label className="app-label mt-3 block text-sm">
+    <div className={cls("sidebar-panel rounded-lg border", compact ? "p-3" : "p-4")}>
+      <p className="sidebar-eyebrow">Current project</p>
+      <label className="app-label mt-2 block">
         <span className="sr-only">Current project</span>
         <select
-          className="app-input w-full rounded-2xl px-4 py-3 text-sm"
+          className="app-input w-full px-3 py-2 text-sm"
           value={currentProjectId || currentProject?.id || ""}
           onChange={(event) => setCurrentProjectId(event.target.value)}
         >
@@ -49,10 +71,10 @@ function ProjectContextCard({ projects, currentProject, currentProjectId, setCur
         </select>
       </label>
       {currentProject ? (
-        <div className="sidebar-copy mt-4 space-y-1 text-sm">
-          <p>{currentProject.location}</p>
-          <p>{number.format(currentProject.areaSqm)} sqm</p>
-          <p className="sidebar-status uppercase tracking-[0.16em]">{currentProject.status}</p>
+        <div className="sidebar-copy mt-3 space-y-0.5 text-xs">
+          {currentProject.location ? <p>{currentProject.location}</p> : null}
+          {currentProject.areaSqm ? <p>{number.format(currentProject.areaSqm)} sqm</p> : null}
+          <p className="sidebar-status mt-1 uppercase tracking-[0.12em]">{currentProject.status}</p>
         </div>
       ) : null}
     </div>
@@ -67,7 +89,8 @@ export function WorkspaceShell({
   projects = [],
   currentProject = null,
   currentProjectId = "",
-  setCurrentProjectId
+  setCurrentProjectId,
+  tokenUsage
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const visibleNavItems = getNavItemsForRole(user?.role);
@@ -75,14 +98,15 @@ export function WorkspaceShell({
   return (
     <div className="workspace-root min-h-screen overflow-x-hidden">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="workspace-divider hidden w-[308px] shrink-0 border-r px-5 py-6 lg:block">
-          <div className="sticky top-0 space-y-6">
-            <div className="sidebar-panel rounded-[28px] border p-5">
-              <p className="sidebar-eyebrow text-xs uppercase tracking-[0.24em]">BuildIntel</p>
-              <h1 className="sidebar-title mt-3 text-2xl font-semibold">{company?.name || "Workspace"}</h1>
-              <p className="sidebar-copy mt-2 text-sm">
-                {user?.name} / {user?.role}
+        <aside className="workspace-divider hidden w-[280px] shrink-0 border-r px-4 py-5 lg:block">
+          <div className="sticky top-0 space-y-4">
+            <div className="sidebar-panel rounded-lg border p-4">
+              <p className="sidebar-eyebrow">BuildIntel</p>
+              <h1 className="sidebar-title mt-2 text-lg font-semibold">{company?.name || "Workspace"}</h1>
+              <p className="sidebar-copy mt-1 text-xs">
+                {user?.name} &middot; {user?.role}
               </p>
+              <TokenTracker tokenUsage={tokenUsage} />
             </div>
             <ProjectContextCard
               projects={projects}
@@ -90,43 +114,43 @@ export function WorkspaceShell({
               currentProjectId={currentProjectId}
               setCurrentProjectId={setCurrentProjectId}
             />
-            <nav className="space-y-3">
+            <nav className="space-y-0.5">
               {visibleNavItems.map((item) => (
                 <SidebarLink key={item.to} {...item} />
               ))}
             </nav>
-            <button className="ghost-btn w-full" type="button" onClick={onLogout}>
-              Log Out
+            <button className="ghost-btn w-full text-xs" type="button" onClick={onLogout}>
+              Sign out
             </button>
           </div>
         </aside>
+
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="workspace-divider flex items-center justify-between border-b px-4 py-4 lg:px-8">
-            <div>
-              <p className="sidebar-status text-xs uppercase tracking-[0.24em]">Navigation</p>
-              <p className="section-title mt-1 text-lg font-semibold">Clear workspace flow</p>
-            </div>
+          <header className="workspace-divider flex items-center justify-between border-b px-4 py-3 lg:px-8">
             <div className="flex items-center gap-3">
+              <p className="section-title text-sm font-semibold">{company?.name || "BuildIntel"}</p>
               {currentProject ? (
-                <div className="sidebar-panel hidden rounded-full border px-4 py-2 text-sm md:block">
-                  {currentProject.name}
+                <div className="hidden items-center gap-2 md:flex">
+                  <span className="sidebar-status text-xs">/</span>
+                  <span className="surface-copy text-xs">{currentProject.name}</span>
                 </div>
               ) : null}
-              <button className="ghost-btn lg:hidden" type="button" onClick={() => setMobileNavOpen(true)}>
-                Menu
-              </button>
             </div>
+            <button className="ghost-btn text-xs lg:hidden" type="button" onClick={() => setMobileNavOpen(true)}>
+              Menu
+            </button>
           </header>
+
           {mobileNavOpen ? (
-            <div className="mobile-overlay fixed inset-0 z-50 px-4 py-6 lg:hidden">
-              <div className="dashboard-shell mx-auto max-w-md rounded-[28px] border p-5">
+            <div className="mobile-overlay fixed inset-0 z-50 px-4 py-5 lg:hidden">
+              <div className="dashboard-shell mx-auto w-full max-w-sm rounded-xl border p-4" style={{ maxWidth: "min(384px, calc(100vw - 2rem))" }}>
                 <div className="flex items-center justify-between">
-                  <p className="section-title text-lg font-semibold">{company?.name}</p>
-                  <button className="ghost-btn" type="button" onClick={() => setMobileNavOpen(false)}>
+                  <p className="section-title text-base font-semibold">{company?.name}</p>
+                  <button className="ghost-btn text-xs" type="button" onClick={() => setMobileNavOpen(false)}>
                     Close
                   </button>
                 </div>
-                <div className="mt-5">
+                <div className="mt-4">
                   <ProjectContextCard
                     projects={projects}
                     currentProject={currentProject}
@@ -135,7 +159,7 @@ export function WorkspaceShell({
                     compact
                   />
                 </div>
-                <nav className="mt-5 space-y-3">
+                <nav className="mt-4 space-y-0.5">
                   {visibleNavItems.map((item) => (
                     <SidebarLink key={item.to} {...item} onClick={() => setMobileNavOpen(false)} />
                   ))}
@@ -143,6 +167,7 @@ export function WorkspaceShell({
               </div>
             </div>
           ) : null}
+
           <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">{children}</main>
         </div>
       </div>

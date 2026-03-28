@@ -1,33 +1,14 @@
-import { Link } from "react-router-dom";
-import { number } from "../lib/app.js";
-import { Banner, EmptyState, Field, MetricCard, SectionCard } from "../components/ui.jsx";
-
-function statusTone(status) {
-  if (status === "Won") {
-    return "Done";
-  }
-
-  if (status === "Lost") {
-    return "Closed";
-  }
-
-  if (status === "Submitted") {
-    return "Submitted";
-  }
-
-  return "Active";
-}
-
-function QuickLink({ to, label, tone = "ghost" }) {
-  return <Link className={tone === "primary" ? "primary-btn inline-flex items-center" : "ghost-btn inline-flex items-center"} to={to}>{label}</Link>;
-}
+import { useRef, useState } from "react";
+import { number, toBase64 } from "../lib/app.js";
+import { workspaceApi } from "../lib/workspaceApi.js";
+import { ActionMenu, Banner, EmptyState, Field, MetricCard, QuickLink, SectionCard } from "../components/ui.jsx";
 
 function ProjectSummary({ projects }) {
   const counts = {
     total: projects.length,
-    estimating: projects.filter((project) => project.status === "Estimating").length,
-    submitted: projects.filter((project) => project.status === "Submitted").length,
-    won: projects.filter((project) => project.status === "Won").length
+    estimating: projects.filter((p) => p.status === "Estimating").length,
+    submitted: projects.filter((p) => p.status === "Submitted").length,
+    won: projects.filter((p) => p.status === "Won").length
   };
 
   return (
@@ -40,135 +21,350 @@ function ProjectSummary({ projects }) {
   );
 }
 
-function CurrentProjectSpotlight({ project, onUpdateProject, updateBusy, canManageProjects }) {
-  if (!project) {
-    return (
-      <EmptyState
-        title="No current project selected"
-        description="Create a project or pick one from the sidebar to see its status and next actions here."
-        action={<QuickLink to="/dashboard" label="Back to Dashboard" />}
-      />
-    );
-  }
+function ProjectCard({ project, onUpdateProject, onDeleteProject, updateBusy, canManageProjects, token, documents }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ name: project.name, location: project.location, areaSqm: String(project.areaSqm), description: project.description });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    await onUpdateProject(project.id, { ...draft, areaSqm: Number(draft.areaSqm) });
+    setEditing(false);
+  };
 
   return (
-    <div className="surface-card grid gap-5 rounded-[24px] p-5 lg:grid-cols-[1.1fr_0.9fr]">
-      <div>
-        <p className="section-eyebrow text-xs uppercase tracking-[0.24em]">Selected Project</p>
-        <h3 className="surface-title mt-2 text-2xl font-semibold">{project.name}</h3>
-        <p className="surface-copy mt-2 text-sm">
-          {project.location} / {number.format(project.areaSqm)} sqm
-        </p>
-        <p className="surface-copy mt-4 text-sm leading-6">{project.description}</p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <QuickLink to="/documents" label="Open Documents" tone="primary" />
-          <QuickLink to="/estimates" label="Open Estimates" />
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-        <MetricCard label="Status" value={project.status} note={`${statusTone(project.status)} in pipeline`} />
-        <div className="surface-card rounded-[20px] p-5">
+    <div className="surface-card rounded-2xl p-4">
+      {editing ? (
+        <form className="space-y-3" onSubmit={saveEdit}>
+          <Field label="Name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Location" value={draft.location} onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))} />
+            <Field label="Area (sqm)" type="number" min="1" value={draft.areaSqm} onChange={(e) => setDraft((d) => ({ ...d, areaSqm: e.target.value }))} />
+          </div>
+          <Field label="Description" type="textarea" rows={3} value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
+          <div className="flex gap-2 pt-1">
+            <button className="primary-btn" type="submit" disabled={updateBusy}>{updateBusy ? "Saving..." : "Save"}</button>
+            <button className="ghost-btn" type="button" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p className="surface-title text-sm font-semibold">{project.name}</p>
+          <p className="surface-copy mt-1 text-sm">
+            {[project.location, project.areaSqm ? `${number.format(project.areaSqm)} sqm` : null].filter(Boolean).join(" / ") || "No details yet"}
+          </p>
+          <p className="surface-copy mt-2 text-sm leading-6 line-clamp-2">{project.description}</p>
+
           {canManageProjects ? (
-            <>
+            <div className="mt-3 space-y-2">
               <label className="app-label block text-sm">
-                <span>Status</span>
+                <span>Stage</span>
                 <select
-                  className="app-input mt-2 w-full rounded-full px-4 py-2 text-sm"
+                  className="app-input mt-1.5 w-full px-3 py-2 text-sm"
                   value={project.status}
-                  onChange={(event) => onUpdateProject(project.id, { status: event.target.value })}
+                  onChange={(e) => onUpdateProject(project.id, { status: e.target.value })}
                   disabled={updateBusy}
                 >
-                  {["Estimating", "Submitted", "Won", "Lost"].map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
+                  {["Estimating", "Submitted", "Won", "Lost"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </label>
-              <p className="surface-copy mt-3 text-sm">Status changes update the pipeline and the dashboard summary immediately.</p>
-            </>
+              <div className="flex gap-2 pt-1">
+                <button className="ghost-btn text-xs" type="button" onClick={() => setEditing(true)}>Edit</button>
+                {confirmDelete ? (
+                  <>
+                    <button className="ghost-btn text-xs text-rose-400" type="button" onClick={() => onDeleteProject(project.id)} disabled={updateBusy}>
+                      {updateBusy ? "Deleting..." : "Confirm Delete"}
+                    </button>
+                    <button className="ghost-btn text-xs" type="button" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <button className="ghost-btn text-xs" type="button" onClick={() => setConfirmDelete(true)}>Delete</button>
+                )}
+              </div>
+            </div>
           ) : (
-            <p className="surface-copy text-sm">Viewers can monitor project status here, but only admins and estimators can move pipeline stages.</p>
+            <p className="surface-meta mt-4 text-xs uppercase tracking-[0.2em]">Read only</p>
           )}
-        </div>
-      </div>
+          <ProjectFileLibrary project={project} token={token} canManage={canManageProjects} documents={documents} />
+        </>
+      )}
     </div>
   );
 }
 
-function PipelineBoard({ projects, onUpdateProject, updateBusy, canManageProjects }) {
-  const groups = [
-    { status: "Estimating", title: "Estimating" },
-    { status: "Submitted", title: "Submitted" },
-    { status: "Won", title: "Won" },
-    { status: "Lost", title: "Lost" }
-  ];
+function PipelineBoard({ projects, onUpdateProject, onDeleteProject, updateBusy, canManageProjects, token, documents }) {
+  const ALL_STAGES = ["Estimating", "Submitted", "Won", "Lost"];
+  const grouped = ALL_STAGES.map((status) => ({ status, items: projects.filter((p) => p.status === status) }));
+  // Always show Estimating; only show other columns if they have projects
+  const visibleGroups = grouped.filter((g) => g.status === "Estimating" || g.items.length > 0);
+  // Collapsed stages summary (empty non-Estimating stages)
+  const collapsedStages = grouped.filter((g) => g.status !== "Estimating" && g.items.length === 0);
 
   return (
-    <div className="grid gap-4 xl:grid-cols-4">
-      {groups.map((group) => {
-        const items = projects.filter((project) => project.status === group.status);
-        return (
-          <div key={group.status} className="surface-card rounded-[22px] p-4">
+    <div className="space-y-4">
+      <div className={`grid gap-4 ${visibleGroups.length === 1 ? "" : visibleGroups.length === 2 ? "xl:grid-cols-2" : visibleGroups.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
+        {visibleGroups.map((group) => (
+          <div key={group.status} className="surface-card rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="surface-title text-base font-semibold">{group.title}</h3>
+              <h3 className="surface-title text-base font-semibold">{group.status}</h3>
               <span className="surface-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
-                {number.format(items.length)}
+                {number.format(group.items.length)}
               </span>
             </div>
             <div className="mt-4 space-y-3">
-              {items.length ? (
-                items.map((project) => (
-                  <div key={project.id} className="rounded-[18px] border border-black/5 bg-white/20 p-4 dark:border-white/8 dark:bg-white/[0.03]">
-                    <p className="surface-title text-sm font-semibold">{project.name}</p>
-                    <p className="surface-copy mt-1 text-sm">
-                      {project.location} / {number.format(project.areaSqm)} sqm
-                    </p>
-                    <p className="surface-copy mt-3 text-sm leading-6">{project.description}</p>
-                    {canManageProjects ? (
-                      <label className="app-label mt-4 block text-sm">
-                        <span>Move To</span>
-                        <select
-                          className="app-input mt-2 w-full rounded-full px-4 py-2 text-sm"
-                          value={project.status}
-                          onChange={(event) => onUpdateProject(project.id, { status: event.target.value })}
-                          disabled={updateBusy}
-                        >
-                          {["Estimating", "Submitted", "Won", "Lost"].map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : (
-                      <p className="surface-meta mt-4 text-xs uppercase tracking-[0.2em]">Read only</p>
-                    )}
-                  </div>
+              {group.items.length ? (
+                group.items.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onUpdateProject={onUpdateProject}
+                    onDeleteProject={onDeleteProject}
+                    updateBusy={updateBusy}
+                    canManageProjects={canManageProjects}
+                    token={token}
+                    documents={documents}
+                  />
                 ))
               ) : (
-                <p className="surface-copy text-sm">No projects in this stage.</p>
+                <p className="surface-copy text-sm">No projects yet.</p>
               )}
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
+      {collapsedStages.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {collapsedStages.map((g) => (
+            <span key={g.status} className="surface-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
+              {g.status} · 0
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const FILE_ICONS = {
+  "application/pdf": "📄",
+  "image/png": "🖼️",
+  "image/jpeg": "🖼️",
+  "image/gif": "🖼️",
+  "image/webp": "🖼️",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "📊",
+  "application/vnd.ms-excel": "📊",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "📝",
+  "application/msword": "📝",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "📊",
+  "application/vnd.ms-powerpoint": "📊",
+  "image/vnd.dxf": "📐",
+  "text/plain": "📃",
+  "text/csv": "📊",
+  "application/json": "📃"
+};
+const fileIcon = (mime) => FILE_ICONS[mime] || "📎";
+const fmtSize = (bytes) => bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : bytes > 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${bytes} B`;
+
+function ProjectFileLibrary({ project, token, canManage, documents }) {
+  const [files, setFiles] = useState(null); // null = not loaded
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const inputRef = useRef(null);
+
+  const load = async () => {
+    try {
+      const result = await workspaceApi.listProjectFiles(token, project.id);
+      setFiles(result);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const toggle = () => {
+    if (!open && files === null) load();
+    setOpen((v) => !v);
+  };
+
+  const handleUpload = async (e) => {
+    const fileList = Array.from(e.target.files || []);
+    if (!fileList.length) return;
+    setUploading(true);
+    setError(null);
+    try {
+      for (const file of fileList) {
+        const contentBase64 = await toBase64(file);
+        await workspaceApi.uploadProjectFile(token, project.id, {
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          contentBase64
+        });
+      }
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (fileId) => {
+    setError(null);
+    try {
+      await workspaceApi.deleteProjectFile(token, project.id, fileId);
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const promoteToDocument = async (fileId) => {
+    setError(null);
+    try {
+      await workspaceApi.promoteFileToDocument(token, project.id, fileId, "architectural");
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const attachFromDocument = async (documentId) => {
+    setShowDocPicker(false);
+    setUploading(true);
+    setError(null);
+    try {
+      await workspaceApi.attachDocumentAsFile(token, project.id, documentId);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t border-white/8 pt-3">
+      <button
+        type="button"
+        className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] surface-meta hover:opacity-80"
+        onClick={toggle}
+      >
+        <span>{open ? "▾" : "▸"}</span>
+        <span>Files {files ? `(${files.length})` : ""}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {error ? <p className="text-xs text-rose-400">{error}</p> : null}
+          {files === null ? (
+            <p className="surface-copy text-xs">Loading…</p>
+          ) : files.length === 0 ? (
+            <p className="surface-copy text-xs">No files attached yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {files.map((f) => (
+                <li key={f.id} className="surface-card flex items-center gap-2 rounded-lg px-3 py-2">
+                  <span className="text-base leading-none">{fileIcon(f.mimeType)}</span>
+                  <span className="surface-copy min-w-0 flex-1 truncate text-xs" title={f.filename}>{f.filename}</span>
+                  <span className="surface-meta text-[10px] shrink-0">{fmtSize(f.sizeBytes)}</span>
+                  {canManage ? (
+                    <>
+                      <button
+                        type="button"
+                        className="ghost-btn py-0.5 px-2 text-[10px] text-sky-400 shrink-0"
+                        title="Send to Documents for AI analysis"
+                        aria-label={`Promote ${f.filename} to Documents`}
+                        onClick={() => promoteToDocument(f.id)}
+                      >
+                        → Docs
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-btn py-0.5 px-2 text-[10px] text-rose-400 shrink-0"
+                        aria-label={`Delete ${f.filename}`}
+                        onClick={() => handleDelete(f.id)}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          {canManage ? (
+            <div className="space-y-2">
+              <input
+                ref={inputRef}
+                type="file"
+                multiple
+                accept=".pdf,.dxf,.png,.jpg,.jpeg,.gif,.webp,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.txt,.csv,.json"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="ghost-btn text-xs"
+                  disabled={uploading}
+                  onClick={() => inputRef.current?.click()}
+                >
+                  {uploading ? "Uploading…" : "+ Upload File"}
+                </button>
+                {documents && documents.length > 0 ? (
+                  <button
+                    type="button"
+                    className="ghost-btn text-xs"
+                    disabled={uploading}
+                    onClick={() => setShowDocPicker((v) => !v)}
+                  >
+                    {showDocPicker ? "Cancel" : "+ From Documents"}
+                  </button>
+                ) : null}
+              </div>
+              {showDocPicker ? (
+                <ul className="surface-card space-y-1 rounded-xl p-2">
+                  {documents.map((doc) => (
+                    <li key={doc.id}>
+                      <button
+                        type="button"
+                        className="w-full text-left rounded-lg px-2 py-1.5 text-xs hover:bg-white/10 surface-copy truncate"
+                        onClick={() => attachFromDocument(doc.id)}
+                      >
+                        📄 {doc.filename}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="surface-meta text-[10px]">PDF, DXF, images, Excel, Word, PPT, CSV, JSON</p>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
 
 export function ProjectsPage({
   data,
+  token,
   projectForm,
   setProjectForm,
   onCreateProject,
   createBusy,
   onUpdateProject,
+  onDeleteProject,
   updateBusy,
   notice,
   error
 }) {
   const canManageProjects = ["Admin", "Estimator"].includes(data.user?.role);
+
   return (
     <div className="space-y-6">
       {error ? <Banner tone="danger">{error}</Banner> : null}
@@ -178,17 +374,15 @@ export function ProjectsPage({
         title="Projects Pipeline"
         eyebrow="Projects"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <QuickLink to="/documents" label="Documents" />
-            <QuickLink to="/estimates" label="Estimates" />
-          </div>
+          <ActionMenu
+            items={[
+              { label: "Documents", to: "/documents" },
+              { label: "Estimates", to: "/estimates" }
+            ]}
+          />
         }
       >
         <ProjectSummary projects={data.projects} />
-      </SectionCard>
-
-      <SectionCard title="Current Project Focus" eyebrow="Selected">
-        <CurrentProjectSpotlight project={data.currentProject} onUpdateProject={onUpdateProject} updateBusy={updateBusy} canManageProjects={canManageProjects} />
       </SectionCard>
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
@@ -199,28 +393,28 @@ export function ProjectsPage({
                 label="Project Name"
                 value={projectForm.name}
                 placeholder="Retail fit-out, house shell, office renovation"
-                onChange={(event) => setProjectForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, name: e.target.value }))}
               />
               <Field
                 label="Location"
                 value={projectForm.location}
                 placeholder="Makati, Taguig, Quezon City"
-                onChange={(event) => setProjectForm((current) => ({ ...current, location: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, location: e.target.value }))}
               />
               <Field
                 label="Area (sqm)"
                 type="number"
                 min="1"
                 value={projectForm.areaSqm}
-                onChange={(event) => setProjectForm((current) => ({ ...current, areaSqm: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, areaSqm: e.target.value }))}
               />
               <Field
                 label="Description"
                 type="textarea"
                 rows={5}
-                placeholder="Describe the build type, scope, and pricing context you want the team to remember."
+                placeholder="Describe the build type, scope, and pricing context."
                 value={projectForm.description}
-                onChange={(event) => setProjectForm((current) => ({ ...current, description: event.target.value }))}
+                onChange={(e) => setProjectForm((c) => ({ ...c, description: e.target.value }))}
               />
               <div className="flex flex-wrap items-center gap-3">
                 <button className="primary-btn" type="submit" disabled={createBusy}>
@@ -239,7 +433,15 @@ export function ProjectsPage({
 
         <SectionCard title="Pipeline Board" eyebrow="Manage">
           {data.projects.length ? (
-            <PipelineBoard projects={data.projects} onUpdateProject={onUpdateProject} updateBusy={updateBusy} canManageProjects={canManageProjects} />
+            <PipelineBoard
+              projects={data.projects}
+              onUpdateProject={onUpdateProject}
+              onDeleteProject={onDeleteProject}
+              updateBusy={updateBusy}
+              canManageProjects={canManageProjects}
+              token={token}
+              documents={data.documents}
+            />
           ) : (
             <EmptyState
               title="No projects in the pipeline"

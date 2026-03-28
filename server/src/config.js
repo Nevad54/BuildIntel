@@ -19,7 +19,7 @@ const envSchema = z
       .default("true")
       .transform((value) => value !== "false"),
     DATABASE_URL: z.string().optional().default(""),
-    MAX_UPLOAD_BYTES: z.coerce.number().int().positive().optional().default(1048576),
+    MAX_UPLOAD_BYTES: z.coerce.number().int().positive().optional().default(104857600),
     AI_PROVIDER: z.enum(["demo", "openai", "github-models"]).optional().default("demo"),
     OPENAI_API_KEY: z.string().optional().default(""),
     OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),

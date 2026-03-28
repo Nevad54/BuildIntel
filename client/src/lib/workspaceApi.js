@@ -5,16 +5,20 @@ export const workspaceApi = {
   bootstrap: (token) => api("/api/bootstrap", { token }),
   createProject: (token, payload) => api("/api/projects", { token, method: "POST", body: payload }),
   updateProject: (token, projectId, payload) => api(`/api/projects/${projectId}`, { token, method: "PATCH", body: payload }),
+  deleteProject: (token, projectId) => api(`/api/projects/${projectId}`, { token, method: "DELETE" }),
+  deleteDocument: (token, documentId) => api(`/api/documents/${documentId}`, { token, method: "DELETE" }),
   createTemplate: (token, payload) => api("/api/templates", { token, method: "POST", body: payload }),
   createPromptTemplate: (token, payload) => api("/api/prompt-templates", { token, method: "POST", body: payload }),
   updatePromptTemplate: (token, promptTemplateId, payload) =>
     api(`/api/prompt-templates/${promptTemplateId}`, { token, method: "PATCH", body: payload }),
   deletePromptTemplate: (token, promptTemplateId) => api(`/api/prompt-templates/${promptTemplateId}`, { token, method: "DELETE" }),
   createMaterial: (token, payload) => api("/api/materials", { token, method: "POST", body: payload }),
+  updateMaterial: (token, materialId, payload) => api(`/api/materials/${materialId}`, { token, method: "PATCH", body: payload }),
   generateEstimate: (token, payload) => api("/api/ai/estimate", { token, method: "POST", body: payload }),
   simulateEstimate: (token, payload) => api("/api/estimates/simulate", { token, method: "POST", body: payload }),
   refreshEstimateMarketPrices: (token, estimateId) =>
     api(`/api/estimates/${estimateId}/refresh-market-prices`, { token, method: "POST" }),
+  deleteEstimate: (token, estimateId) => api(`/api/estimates/${estimateId}`, { token, method: "DELETE" }),
   updateEstimate: (token, estimateId, payload) => api(`/api/estimates/${estimateId}`, { token, method: "PATCH", body: payload }),
   updateEstimateStatus: (token, estimateId, status) =>
     api(`/api/estimates/${estimateId}/status`, { token, method: "PATCH", body: { status } }),
@@ -28,7 +32,23 @@ export const workspaceApi = {
       throw new Error(payload.message || "Export failed");
     }
 
-    return response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return { blob: await response.blob(), filename: match?.[1] || "estimate.pdf" };
+  },
+  exportEstimateCsv: async (token, estimateId) => {
+    const response = await fetch(`${API_ROOT}/api/estimates/${estimateId}/csv`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.message || "CSV export failed");
+    }
+
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return { blob: await response.blob(), filename: match?.[1] || "estimate.csv" };
   },
   uploadDocument: (token, projectId, payload) =>
     api(`/api/projects/${projectId}/documents`, { token, method: "POST", body: payload }),
@@ -41,5 +61,45 @@ export const workspaceApi = {
     api("/api/pricing/import-remote", { token, method: "POST", body: payload }),
   updatePlan: (token, plan) => api("/api/company/plan", { token, method: "PATCH", body: { plan } }),
   listAuditLogs: (token) => api("/api/audit-logs", { token }),
-  updateAccount: (token, payload) => api("/api/account", { token, method: "PATCH", body: payload })
+  updateAccount: (token, payload) => api("/api/account", { token, method: "PATCH", body: payload }),
+  analyzeDocument: (token, payload) => api("/api/ai/analyze-document", { token, method: "POST", body: payload }),
+  refineEstimate: (token, payload) => api("/api/ai/refine-estimate", { token, method: "POST", body: payload }),
+  agentCommand: (token, payload) => api("/api/ai/agent", { token, method: "POST", body: payload }),
+  bulkReprice: (token, estimateId, payload) =>
+    api(`/api/estimates/${estimateId}/bulk-reprice`, { token, method: "POST", body: payload }),
+  createSnapshot: (token, estimateId, label) =>
+    api(`/api/estimates/${estimateId}/snapshot`, { token, method: "POST", body: { label } }),
+  listSnapshots: (token, estimateId) =>
+    api(`/api/estimates/${estimateId}/snapshots`, { token }),
+  checkCompleteness: (token, estimateId) =>
+    api(`/api/estimates/${estimateId}/completeness`, { token }),
+  exportDpwhBoqPdf: async (token, estimateId) => {
+    const response = await fetch(`${API_ROOT}/api/estimates/${estimateId}/dpwh-pdf`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.message || "DPWH BOQ export failed");
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return { blob: await response.blob(), filename: match?.[1] || "dpwh-boq.pdf" };
+  },
+  listProjectFiles: (token, projectId) => api(`/api/projects/${projectId}/files`, { token }),
+  uploadProjectFile: (token, projectId, payload) => api(`/api/projects/${projectId}/files`, { token, method: "POST", body: payload }),
+  attachDocumentAsFile: (token, projectId, documentId) => api(`/api/projects/${projectId}/files/from-document`, { token, method: "POST", body: { documentId } }),
+  promoteFileToDocument: (token, projectId, fileId, docType) => api(`/api/projects/${projectId}/files/${fileId}/promote`, { token, method: "POST", body: { docType } }),
+  deleteProjectFile: (token, projectId, fileId) => api(`/api/projects/${projectId}/files/${fileId}`, { token, method: "DELETE" }),
+  exportEstimateSummaryPdf: async (token, estimateId) => {
+    const response = await fetch(`${API_ROOT}/api/estimates/${estimateId}/summary-pdf`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.message || "Summary PDF export failed");
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return { blob: await response.blob(), filename: match?.[1] || "estimate-summary.pdf" };
+  }
 };

@@ -62,7 +62,7 @@ function PlanSwitcher({ data, onChangePlan, planBusy, currencyCode }) {
                 <p className="surface-copy mt-1 text-sm">{formatCurrency(plan.priceMonthly, currencyCode)}/month</p>
               </div>
               {active ? (
-                <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-semibold text-slate-950">Active</span>
+                <span className="rounded-full bg-sky-400 px-3 py-1 text-xs font-semibold text-slate-950">Active</span>
               ) : null}
             </div>
             <div className="surface-copy mt-4 space-y-2 text-sm">

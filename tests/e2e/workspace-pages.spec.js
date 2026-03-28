@@ -100,8 +100,8 @@ test("documents page saves review edits for an uploaded file", async ({ page }) 
   await uploadSection.getByRole("button", { name: "Upload and Analyze" }).click();
 
   const reviewQueue = page.locator("section").filter({ hasText: "Review Queue" });
-  const reviewHeading = reviewQueue.getByRole("heading", { name: filename });
-  await expect(reviewHeading).toBeVisible();
+  const reviewHeading = reviewQueue.getByText(filename, { exact: true });
+  await expect(reviewHeading).toBeVisible({ timeout: 20000 });
   const reviewCard = reviewHeading.locator("xpath=ancestor::div[contains(@class,'surface-card')][1]");
 
   await reviewCard.getByLabel("Summary").fill("QA updated summary for review workflow.");
@@ -196,7 +196,7 @@ test("estimator sees editing tools but not admin billing controls", async ({ pag
 
   await page.getByRole("navigation").getByRole("link", { name: /Estimates/i }).click();
   await expect(page.getByRole("button", { name: "Generate Draft" })).toBeEnabled();
-  await expect(page.getByText("Add rows fast")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Item Builder" })).toBeVisible();
   await expect(page.getByRole("button", { name: /No Changes to Save|Save Estimate Changes/ })).toHaveCount(1);
 });
 

@@ -5,8 +5,8 @@ export const PROMPT_TEMPLATES_KEY = "buildintel.promptTemplates";
 
 export const loginDefaults = { email: "admin@northforge.dev", password: "buildintel123" };
 export const registerDefaults = { companyName: "", name: "", email: "", password: "" };
-export const projectDefaults = { name: "", location: "", areaSqm: "60", description: "" };
-export const templateDefaults = { name: "", overheadPercent: "12", profitPercent: "18", contingencyPercent: "7" };
+export const projectDefaults = { name: "", location: "", areaSqm: "", description: "" };
+export const templateDefaults = { name: "", overheadPercent: "", profitPercent: "", contingencyPercent: "" };
 export const materialDefaults = {
   name: "",
   unit: "",
@@ -16,20 +16,20 @@ export const materialDefaults = {
   suppliers: ""
 };
 export const estimateDefaults = {
-  prompt: "Generate estimate for a 60sqm bungalow house in Quezon City",
+  prompt: "",
   projectId: "",
-  templateId: ""
+  templateId: "",
+  discipline: ""
 };
-export const documentDefaults = { projectId: "", filename: "", areaHint: "60", notes: "", file: null };
-export const researchDefaults = { material: "10mm Rebar", location: "Quezon City" };
-export const supplierDefaults = { material: "10mm Rebar", location: "Quezon City" };
+export const documentDefaults = { projectId: "", newProjectName: "", filename: "", areaHint: "", notes: "", file: null, files: [], docType: "architectural" };
+export const researchDefaults = { material: "", location: "" };
+export const supplierDefaults = { material: "", location: "" };
 export const pricingImportDefaults = {
   source: "weekly-feed",
-  csvText:
-    "material,supplier,location,price,unit,delivery,distanceKm,confidence\n10mm Rebar,Metro Steel Supply,Pasig City,199,per piece,Available,4,high"
+  csvText: "material,supplier,location,price,unit,delivery,distanceKm,confidence\n"
 };
 export const remoteImportDefaults = { source: "remote-csv", url: "" };
-export const simulationDefaults = { directCost: "913600", overheadPercent: "12", profitPercent: "18", contingencyPercent: "7" };
+export const simulationDefaults = { directCost: "", overheadPercent: "", profitPercent: "", contingencyPercent: "" };
 
 export const navItems = [
   { to: "/dashboard", label: "Dashboard", description: "Overview and quick actions" },

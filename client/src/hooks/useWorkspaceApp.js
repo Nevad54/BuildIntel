@@ -149,6 +149,7 @@ export function useWorkspaceApp() {
       exchangeRates
     },
     data: workspace.data,
+    loadWorkspace: workspace.loadWorkspace,
     forms: workspace.forms,
     results: workspace.results,
     busy: workspace.busy,
