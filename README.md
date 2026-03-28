@@ -47,23 +47,41 @@ Teams get:
 
 That flow makes BuildIntel feel like a real preconstruction platform rather than a narrow AI feature.
 
-## Screenshots
+## Product Tour
 
-### Workspace Overview
+### Sign In And Workspace Identity
+
+The product opens with a focused workspace login and branded shell so the experience feels like software for a real estimating team, not a generic admin dashboard.
+
+![BuildIntel auth](screenshots/pages/auth.png)
+
+### Dashboard Overview
+
+The dashboard gives estimators a quick read on current project context, recent activity, active alerts, and the next actions needed to move a bid forward.
 
 ![BuildIntel dashboard](screenshots/pages/dashboard.png)
 
-### Estimate Workflow
+### Project And Document Flow
 
-![BuildIntel estimates page](screenshots/pages/estimates.png)
+Projects, uploads, and review workflows stay connected so scope setup and source documents do not get lost between steps.
 
-### Document Intelligence
+![BuildIntel projects page](screenshots/pages/projects.png)
 
 ![BuildIntel documents page](screenshots/pages/documents.png)
 
-### Pricing Research
+### Estimate Workspace
+
+The estimate workspace is the core of the product: draft generation, editable BOQ rows, save status, approval flow, what-if pricing, and export controls all live in one place.
+
+![BuildIntel estimates page](screenshots/pages/estimates.png)
+
+### Pricing And Control
+
+Pricing research, supplier comparison, and workspace settings make the platform feel operational, not just generative.
 
 ![BuildIntel pricing page](screenshots/pages/pricing.png)
+
+![BuildIntel settings page](screenshots/pages/settings.png)
 
 ## Quality Signals
 
